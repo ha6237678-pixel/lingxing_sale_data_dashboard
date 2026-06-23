@@ -1,26 +1,41 @@
 import { AppShell } from "@/components/dashboard/app-shell";
+import { TargetMonthlyBarChart } from "@/components/charts/target-monthly-bar-chart";
 import { GlobalFilters } from "@/components/dashboard/global-filters";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
-import { getTargetRankings, getTargetSummary } from "@/lib/queries/targets";
+import { getLatestSettlementDate, getTargetRankings, getTargetSummary } from "@/lib/queries/targets";
 import { displayError } from "@/lib/services/errors";
 import { parseFilters } from "@/lib/utils/date";
 import { formatMoney, formatPercent } from "@/lib/utils/number";
+import { format, startOfMonth } from "date-fns";
 
 export default async function TargetsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const filters = parseFilters(await searchParams);
+  const params = await searchParams;
+  const filters = parseFilters(params);
 
   try {
+    const latestSettlementDate = await getLatestSettlementDate();
+    const hasEndDate = Boolean(params?.endDate);
+    const hasStartDate = Boolean(params?.startDate);
+    if (latestSettlementDate && !hasEndDate) {
+      filters.endDate = latestSettlementDate;
+      if (!hasStartDate) {
+        filters.startDate = format(startOfMonth(new Date(`${latestSettlementDate}T00:00:00`)), "yyyy-MM-dd");
+      }
+    }
+
     const [options, summary, rankings] = await Promise.all([getFilterOptions(), getTargetSummary(filters), getTargetRankings(filters)]);
 
     return (
       <AppShell>
-        <SectionTitle
-          title="目标达成"
-          description="目标金额按结束日期所在月份取月目标；实际销售额和实际毛利均来自结算利润表，并严格按当前筛选日期范围统计。"
-        />
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-ink">目标达成</h1>
+          <div className="mt-1 text-sm leading-6 text-blue-700">
+            <p>1. 数据源：取自【领星ERP-结算利润】模块。</p>
+            <p>2. 时间筛选规则：系统每日自动获取 T-7 天（即当天往前推算第 7 天）的结算数据。</p>
+          </div>
+        </div>
         <GlobalFilters filters={filters} options={options} />
         <div className="grid gap-3 md:grid-cols-4">
           <MetricCard label="销售目标" value={summary.salesTarget ? formatMoney(summary.salesTarget) : "未配置目标"} />
@@ -29,11 +44,11 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
             value={formatMoney(summary.actualSales)}
             hint={`${filters.startDate} 至 ${filters.endDate} 的 sum(total_sales_amount_with_tax)`}
           />
-          <MetricCard label="销售完成率" value={formatPercent(summary.salesCompletion)} />
+          <MetricCard label="累计销售完成率" value={formatPercent(summary.salesCompletion)} />
           <MetricCard label="已配置目标人数" value={`${summary.configuredOperators}`} />
           <MetricCard label="利润目标" value={summary.profitTarget ? formatMoney(summary.profitTarget) : "未配置目标"} />
           <MetricCard label="实际毛利润" value={formatMoney(summary.actualProfit)} hint={`${filters.startDate} 至 ${filters.endDate} 的 sum(gross_profit)`} />
-          <MetricCard label="利润完成率" value={formatPercent(summary.profitCompletion)} />
+          <MetricCard label="累计利润完成率" value={formatPercent(summary.profitCompletion)} />
         </div>
         <section className="mt-5 border border-line bg-white shadow-panel">
           <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">运营目标达成排行</div>
@@ -45,11 +60,11 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
                   <th className="px-4 py-3">组别</th>
                   <th className="px-4 py-3 text-right">销售目标</th>
                   <th className="px-4 py-3 text-right">实际销售额</th>
-                  <th className="px-4 py-3 text-right">销售完成率</th>
+                  <th className="px-4 py-3 text-right">累计销售完成率</th>
                   <th className="px-4 py-3 text-right">月化销售额完成率</th>
                   <th className="px-4 py-3 text-right">利润目标</th>
                   <th className="px-4 py-3 text-right">实际毛利润</th>
-                  <th className="px-4 py-3 text-right">利润完成率</th>
+                  <th className="px-4 py-3 text-right">累计利润完成率</th>
                   <th className="px-4 py-3 text-right">月化毛利润完成率</th>
                 </tr>
               </thead>
@@ -72,12 +87,15 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
             </table>
           </div>
         </section>
+        <TargetMonthlyBarChart data={rankings} />
       </AppShell>
     );
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="目标达成" />
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-ink">目标达成</h1>
+        </div>
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

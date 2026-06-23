@@ -1,7 +1,9 @@
 .env
 .env.local
+.env.bak-*
 .next
 node_modules
 .npm-cache
 dist
 coverage
+*.log

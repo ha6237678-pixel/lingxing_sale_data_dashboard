@@ -14,6 +14,14 @@ export type TargetSummary = {
   configuredOperators: number;
 };
 
+export async function getLatestSettlementDate() {
+  const rows = await query<{ latest_date: string | null }>(
+    "select max(settlement_date)::text as latest_date from fact_settlement_profit",
+  );
+
+  return rows[0]?.latest_date ?? undefined;
+}
+
 export async function getTargetSummary(filters: DashboardFilters): Promise<TargetSummary> {
   const month = currentMonthStart(new Date(`${filters.endDate}T00:00:00`));
   const values = [month, filters.groupName ?? null, filters.principalUid ? Number(filters.principalUid) : null];
