@@ -16,13 +16,31 @@ export function filterValues(filters: DashboardFilters) {
 
 export async function getFilterOptions(): Promise<FilterOptions> {
   const groups = await query<{ group_name: string }>(
-    "select distinct group_name from dim_operator where group_name is not null order by group_name",
+    `select group_name
+     from (
+       select distinct group_name
+       from dim_operator
+       where group_name is not null
+     ) groups
+     order by case group_name
+       when '四组' then 1
+       when '五组' then 2
+       when '六组' then 3
+       when '七组' then 4
+       else 99
+     end, group_name`,
   );
   const operators = await query<{ principal_uid: string; operator_name: string; group_name: string }>(
     `select principal_uid::text, operator_name, group_name
      from dim_operator
      where principal_uid is not null and coalesce(is_active, true) = true
-     order by group_name, operator_name`,
+     order by case group_name
+       when '四组' then 1
+       when '五组' then 2
+       when '六组' then 3
+       when '七组' then 4
+       else 99
+     end, group_name, operator_name`,
   );
 
   return {

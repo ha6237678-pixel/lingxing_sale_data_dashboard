@@ -8,7 +8,7 @@ import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
 import { getSalesRankings, getSalesSummary, getSalesTrend } from "@/lib/queries/sales";
 import { displayError } from "@/lib/services/errors";
-import { parseFilters } from "@/lib/utils/date";
+import { normalizeComparisonFilters, parseFilters } from "@/lib/utils/date";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/utils/number";
 
 export default async function SalesPage({
@@ -17,7 +17,7 @@ export default async function SalesPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const filters = parseFilters(params);
+  const filters = normalizeComparisonFilters(parseFilters(params));
 
   try {
     const [options, summary, trend, groupRankings, operatorRankings] = await Promise.all([
@@ -34,7 +34,7 @@ export default async function SalesPage({
           title="销售数据总览"
           description="按日期、组别、运营负责人查看销售额、销量、订单和 B2B 表现。"
         />
-        <GlobalFilters filters={filters} options={options} />
+        <GlobalFilters filters={filters} options={options} showComparisonMode />
         <div className="grid gap-3 md:grid-cols-4">
           <MetricCard label="销售额" value={formatMoney(summary.amount)} hint="sum(amount)" />
           <MetricCard label="销量" value={formatNumber(summary.volume)} hint="sum(volume)" />
@@ -52,7 +52,7 @@ export default async function SalesPage({
         <div className="mt-5">
           <SelectableSalesTrendChart data={trend} />
         </div>
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <div className="mt-5 space-y-5">
           <RankingTable title="组别销售排行" rows={groupRankings} />
           <RankingTable title="运营销售排行" rows={operatorRankings} />
         </div>

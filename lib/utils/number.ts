@@ -12,6 +12,15 @@ export function formatMoney(value: number) {
   }).format(value);
 }
 
+export function formatMoneyDecimal(value: number) {
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("zh-CN", {
     maximumFractionDigits: 0,
