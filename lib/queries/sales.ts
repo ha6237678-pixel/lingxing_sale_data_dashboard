@@ -1,5 +1,5 @@
 import { query } from "@/lib/db/client";
-import { filterValues } from "@/lib/queries/common";
+import { filterValues, productLineCondition, productLineValue } from "@/lib/queries/common";
 import { previousComparisonRange, type DashboardFilters } from "@/lib/utils/date";
 import { toNumber } from "@/lib/utils/number";
 
@@ -55,8 +55,9 @@ export async function getSalesSummary(filters: DashboardFilters): Promise<SalesS
     from fact_operator_daily_metrics
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
-      and ($4::bigint is null or principal_uid = $4)`,
-    filterValues(filters),
+      and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}`,
+    [...filterValues(filters), ...productLineValue(filters)],
   );
   const row = rows[0] ?? {};
   return {
@@ -86,9 +87,10 @@ export async function getSalesTrend(filters: DashboardFilters): Promise<TrendPoi
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
       and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}
     group by stat_date
     order by stat_date`,
-    filterValues(filters),
+    [...filterValues(filters), ...productLineValue(filters)],
   );
 
   return rows.map((row) => ({
@@ -123,6 +125,7 @@ export async function getSalesRankings(filters: DashboardFilters, by: "group" | 
       where stat_date between $1 and $2
         and ($3::text is null or group_name = $3)
         and ($4::bigint is null or principal_uid = $4)
+        ${productLineCondition(filters, 7)}
       group by ${groupBy}
     ),
     previous_period as (
@@ -135,6 +138,7 @@ export async function getSalesRankings(filters: DashboardFilters, by: "group" | 
       where stat_date between $5 and $6
         and ($3::text is null or group_name = $3)
         and ($4::bigint is null or principal_uid = $4)
+        ${productLineCondition(filters, 7)}
       group by ${groupBy}
     )
     select
@@ -153,7 +157,7 @@ export async function getSalesRankings(filters: DashboardFilters, by: "group" | 
       and previous_period.group_name = current_period.group_name
     order by current_period.amount desc
     ${by === "group" ? "limit 10" : ""}`,
-    [...filterValues(filters), previous.startDate, previous.endDate],
+    [...filterValues(filters), previous.startDate, previous.endDate, ...productLineValue(filters)],
   );
 
   return rows.map((row) => ({

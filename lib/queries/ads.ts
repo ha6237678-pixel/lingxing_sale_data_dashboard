@@ -1,5 +1,5 @@
 import { query } from "@/lib/db/client";
-import { filterValues } from "@/lib/queries/common";
+import { filterValues, productLineCondition, productLineValue } from "@/lib/queries/common";
 import type { DashboardFilters } from "@/lib/utils/date";
 import { toNumber } from "@/lib/utils/number";
 
@@ -44,8 +44,9 @@ export async function getAdsSummary(filters: DashboardFilters): Promise<AdsSumma
     from fact_operator_daily_metrics
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
-      and ($4::bigint is null or principal_uid = $4)`,
-    filterValues(filters),
+      and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}`,
+    [...filterValues(filters), ...productLineValue(filters)],
   );
   const row = rows[0] ?? {};
   return {
@@ -89,9 +90,10 @@ export async function getAdsTrend(filters: DashboardFilters) {
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
       and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}
     group by stat_date
     order by stat_date`,
-    filterValues(filters),
+    [...filterValues(filters), ...productLineValue(filters)],
   );
 
   return rows.map((row) => ({

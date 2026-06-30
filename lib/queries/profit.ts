@@ -1,5 +1,5 @@
 import { query } from "@/lib/db/client";
-import { filterValues } from "@/lib/queries/common";
+import { filterValues, productLineCondition, productLineValue } from "@/lib/queries/common";
 import { previousComparisonRange, type DashboardFilters } from "@/lib/utils/date";
 import { toNumber } from "@/lib/utils/number";
 
@@ -70,8 +70,9 @@ export async function getProfitSummary(filters: DashboardFilters): Promise<Profi
     from fact_settlement_profit
     where settlement_date between $1 and $2
       and ($3::text is null or group_name = $3)
-      and ($4::bigint is null or principal_uid = $4)`,
-    filterValues(filters),
+      and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}`,
+    [...filterValues(filters), ...productLineValue(filters)],
   );
   const row = rows[0] ?? {};
   return {
@@ -122,9 +123,10 @@ export async function getProfitTrend(filters: DashboardFilters) {
     where settlement_date between $1 and $2
       and ($3::text is null or group_name = $3)
       and ($4::bigint is null or principal_uid = $4)
+      ${productLineCondition(filters, 5)}
     group by settlement_date
     order by settlement_date`,
-    filterValues(filters),
+    [...filterValues(filters), ...productLineValue(filters)],
   );
 
   return rows.map((row) => ({
@@ -158,6 +160,7 @@ export async function getProfitRankings(filters: DashboardFilters) {
       where settlement_date between $1 and $2
         and ($3::text is null or group_name = $3)
         and ($4::bigint is null or principal_uid = $4)
+        ${productLineCondition(filters, 7)}
       group by principal_uid, operator_name, group_name
     ),
     previous_period as (
@@ -169,6 +172,7 @@ export async function getProfitRankings(filters: DashboardFilters) {
       where settlement_date between $5 and $6
         and ($3::text is null or group_name = $3)
         and ($4::bigint is null or principal_uid = $4)
+        ${productLineCondition(filters, 7)}
       group by principal_uid
     )
     select
@@ -185,7 +189,7 @@ export async function getProfitRankings(filters: DashboardFilters) {
     left join previous_period on previous_period.principal_uid = current_period.principal_uid
     order by current_period.gross_profit desc
     limit 10`,
-    [...filterValues(filters), previous.startDate, previous.endDate],
+    [...filterValues(filters), previous.startDate, previous.endDate, ...productLineValue(filters)],
   );
 
   return rows.map((row) => ({

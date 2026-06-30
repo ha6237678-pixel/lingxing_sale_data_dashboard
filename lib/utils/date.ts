@@ -7,6 +7,7 @@ export type DashboardFilters = {
   endDate: string;
   groupName?: string;
   principalUid?: string;
+  productLine?: string;
   comparisonMode?: ComparisonMode;
 };
 
@@ -32,6 +33,7 @@ export function parseFilters(searchParams?: Record<string, string | string[] | u
     endDate: read("endDate") || defaults.endDate,
     groupName: read("groupName") || undefined,
     principalUid: read("principalUid") || undefined,
+    productLine: read("productLine") || undefined,
     comparisonMode: parseComparisonMode(read("comparisonMode")),
   };
 }
