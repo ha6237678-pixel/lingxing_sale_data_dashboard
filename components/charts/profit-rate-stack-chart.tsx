@@ -1,6 +1,6 @@
 "use client";
 
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Label, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 export type ProfitRateData = {
   grossRate: number;
@@ -36,10 +36,16 @@ export function formatRatePercent(value: unknown) {
 }
 
 export function ProfitRateStackChart({
+  centerLabel = "利润率",
+  centerValue,
   data,
-  title = "利润结构占比",
+  subtitle,
+  title = "利润结构",
 }: {
+  centerLabel?: string;
+  centerValue: number;
   data: ProfitRateData;
+  subtitle?: string;
   title?: string;
 }) {
   const chartData = profitRateSeries
@@ -52,17 +58,20 @@ export function ProfitRateStackChart({
 
   return (
     <section className="border border-line bg-white p-4 shadow-panel">
-      <div className="mb-3 text-sm font-semibold text-ink">{title}</div>
-      <div className="h-80">
+      <div className="mb-3">
+        <div className="text-base font-semibold text-ink">{title}</div>
+        {subtitle ? <div className="mt-1 text-sm text-muted">{subtitle}</div> : null}
+      </div>
+      <div className="relative h-80">
         {chartData.length ? (
           <ResponsiveContainer height="100%" width="100%">
             <PieChart>
               <Pie
                 cx="50%"
-                cy="48%"
+                cy="50%"
                 data={chartData}
                 dataKey="value"
-                innerRadius="52%"
+                innerRadius="54%"
                 nameKey="name"
                 outerRadius="78%"
                 paddingAngle={1}
@@ -70,6 +79,25 @@ export function ProfitRateStackChart({
                 {chartData.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
+                <Label
+                  content={({ viewBox }) => {
+                    if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox)) return null;
+                    const { cx, cy } = viewBox;
+                    if (typeof cx !== "number" || typeof cy !== "number") return null;
+
+                    return (
+                      <text dominantBaseline="middle" textAnchor="middle" x={cx} y={cy}>
+                        <tspan className="fill-ink text-2xl font-semibold" x={cx} y={cy - 10}>
+                          {formatRatePercent(centerValue)}
+                        </tspan>
+                        <tspan className="fill-muted text-xs" x={cx} y={cy + 18}>
+                          {centerLabel}
+                        </tspan>
+                      </text>
+                    );
+                  }}
+                  position="center"
+                />
               </Pie>
               <Tooltip formatter={(value, name) => [formatRatePercent(value), name]} />
               <Legend />
