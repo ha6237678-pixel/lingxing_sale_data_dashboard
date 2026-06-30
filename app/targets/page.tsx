@@ -85,7 +85,7 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
             <p>2. 时间筛选规则：系统每日自动获取 T-7 天（即当天往前推算第 7 天）的结算数据。</p>
           </div>
         </div>
-        <GlobalFilters filters={filters} options={options} showProductLine={false} />
+        <GlobalFilters filters={filters} options={options} />
         <section className="mt-5 rounded-[12px] border border-line bg-white p-6 shadow-panel">
           <div className="mb-4 text-[16px] font-semibold text-[#1F2D3D]">目标完成概览</div>
           <div className="grid gap-3 md:grid-cols-4">

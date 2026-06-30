@@ -7,23 +7,90 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
-import { getAdsSummary, getAdsTrend } from "@/lib/queries/ads";
+import { getAdsRankings, getAdsSummary, getAdsTrend, type AdsRankingRow } from "@/lib/queries/ads";
 import { displayError } from "@/lib/services/errors";
-import { parseFilters } from "@/lib/utils/date";
+import { normalizeComparisonFilters, parseFilters } from "@/lib/utils/date";
 import { formatMoney, formatMoneyDecimal, formatNumber, formatPercent } from "@/lib/utils/number";
+
+function formatCompare(value: number | undefined) {
+  if (value === undefined) return "-";
+  const prefix = value > 0 ? "+" : "";
+
+  return `${prefix}${formatPercent(value)}`;
+}
+
+function compareClassName(value: number | undefined, inverse = false) {
+  if (value === undefined || value === 0) return "text-muted";
+
+  const positiveIsGood = !inverse;
+  return value > 0 === positiveIsGood ? "text-emerald-700" : "text-coral";
+}
+
+function AdsRankingTable({ rows }: { rows: AdsRankingRow[] }) {
+  return (
+    <section className="mt-5 border border-line bg-white shadow-panel">
+      <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">广告排行</div>
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full table-auto text-left text-sm">
+          <thead className="bg-slate-50 text-xs text-muted">
+            <tr>
+              <th className="whitespace-nowrap px-4 py-3">运营负责人</th>
+              <th className="whitespace-nowrap px-4 py-3">组别</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">广告销售额</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">广告销售额环比</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">ACOS</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">ACOS 环比</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">TACOS</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">TACOS 环比</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {rows.length ? (
+              rows.map((row) => (
+                <tr key={`${row.groupName}-${row.name}`} className="hover:bg-slate-50">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{row.name}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">{row.groupName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">{formatMoney(row.adSalesAmount)}</td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${compareClassName(row.adSalesAmountCompareRate)}`}>
+                    {formatCompare(row.adSalesAmountCompareRate)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">{formatPercent(row.acos)}</td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${compareClassName(row.acosCompareDelta, true)}`}>
+                    {formatCompare(row.acosCompareDelta)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">{formatPercent(row.tacos)}</td>
+                  <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${compareClassName(row.tacosCompareDelta, true)}`}>
+                    {formatCompare(row.tacosCompareDelta)}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-4 py-8 text-center text-muted" colSpan={8}>
+                  当前筛选范围暂无广告排行数据
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 export default async function AdsPage({
   searchParams,
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const filters = parseFilters(await searchParams);
+  const filters = normalizeComparisonFilters(parseFilters(await searchParams));
 
   try {
-    const [options, summary, trend] = await Promise.all([
+    const [options, summary, trend, rankings] = await Promise.all([
       getFilterOptions(),
       getAdsSummary(filters),
       getAdsTrend(filters),
+      getAdsRankings(filters),
     ]);
 
     return (
@@ -32,7 +99,7 @@ export default async function AdsPage({
           title="流量与广告总览"
           description="查看 Sessions、PV、总CVR、广告CTR、广告投入、ACOS/TACOS 和自然转化。"
         />
-        <GlobalFilters filters={filters} options={options} />
+        <GlobalFilters filters={filters} options={options} showComparisonMode />
         <div className="grid gap-3 md:grid-cols-4">
           <MetricCard label="Sessions" value={formatNumber(summary.sessionsTotal)} />
           <MetricCard label="PV" value={formatNumber(summary.pageViewsTotal)} />
@@ -105,6 +172,7 @@ export default async function AdsPage({
           />
           <SelectableAdsCvrTrendChart data={trend} />
         </div>
+        <AdsRankingTable rows={rankings} />
       </AppShell>
     );
   } catch (error) {

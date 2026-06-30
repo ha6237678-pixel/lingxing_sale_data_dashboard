@@ -1,6 +1,6 @@
 import { query } from "@/lib/db/client";
-import { filterValues, productLineCondition, productLineValue } from "@/lib/queries/common";
-import type { DashboardFilters } from "@/lib/utils/date";
+import { filterValues } from "@/lib/queries/common";
+import { previousComparisonRange, type DashboardFilters } from "@/lib/utils/date";
 import { toNumber } from "@/lib/utils/number";
 
 export type AdsSummary = {
@@ -20,6 +20,17 @@ export type AdsSummary = {
   natureOrderItems: number;
   natureCvr: number;
   rowCount: number;
+};
+
+export type AdsRankingRow = {
+  name: string;
+  groupName: string;
+  adSalesAmount: number;
+  adSalesAmountCompareRate?: number;
+  acos: number;
+  acosCompareDelta?: number;
+  tacos: number;
+  tacosCompareDelta?: number;
 };
 
 export async function getAdsSummary(filters: DashboardFilters): Promise<AdsSummary> {
@@ -44,9 +55,8 @@ export async function getAdsSummary(filters: DashboardFilters): Promise<AdsSumma
     from fact_operator_daily_metrics
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
-      and ($4::bigint is null or principal_uid = $4)
-      ${productLineCondition(filters, 5)}`,
-    [...filterValues(filters), ...productLineValue(filters)],
+      and ($4::bigint is null or principal_uid = $4)`,
+    filterValues(filters),
   );
   const row = rows[0] ?? {};
   return {
@@ -90,10 +100,9 @@ export async function getAdsTrend(filters: DashboardFilters) {
     where stat_date between $1 and $2
       and ($3::text is null or group_name = $3)
       and ($4::bigint is null or principal_uid = $4)
-      ${productLineCondition(filters, 5)}
     group by stat_date
     order by stat_date`,
-    [...filterValues(filters), ...productLineValue(filters)],
+    filterValues(filters),
   );
 
   return rows.map((row) => ({
@@ -111,5 +120,72 @@ export async function getAdsTrend(filters: DashboardFilters) {
     ctr: toNumber(row.ctr),
     adCvr: toNumber(row.ad_cvr),
     natureCvr: toNumber(row.nature_cvr),
+  }));
+}
+
+export async function getAdsRankings(filters: DashboardFilters): Promise<AdsRankingRow[]> {
+  const previous = previousComparisonRange(filters);
+  const rows = await query<Record<string, string>>(
+    `with current_period as (
+      select
+        principal_uid,
+        operator_name as name,
+        max(group_name) as group_name,
+        coalesce(sum(ad_sales_amount), 0) as ad_sales_amount,
+        coalesce(sum(spend), 0) as spend,
+        coalesce(sum(amount), 0) as amount,
+        coalesce(sum(spend) / nullif(sum(ad_sales_amount), 0), 0) as acos,
+        coalesce(sum(spend) / nullif(sum(amount), 0), 0) as tacos
+      from fact_operator_daily_metrics
+      where stat_date between $1 and $2
+        and ($3::text is null or group_name = $3)
+        and ($4::bigint is null or principal_uid = $4)
+      group by principal_uid, operator_name
+    ),
+    previous_period as (
+      select
+        principal_uid,
+        coalesce(sum(ad_sales_amount), 0) as previous_ad_sales_amount,
+        coalesce(sum(spend) / nullif(sum(ad_sales_amount), 0), 0) as previous_acos,
+        coalesce(sum(spend) / nullif(sum(amount), 0), 0) as previous_tacos
+      from fact_operator_daily_metrics
+      where stat_date between $5 and $6
+        and ($3::text is null or group_name = $3)
+        and ($4::bigint is null or principal_uid = $4)
+      group by principal_uid
+    )
+    select
+      current_period.*,
+      case
+        when previous_period.previous_ad_sales_amount is null or previous_period.previous_ad_sales_amount = 0 then null
+        else (current_period.ad_sales_amount - previous_period.previous_ad_sales_amount) / previous_period.previous_ad_sales_amount
+      end as ad_sales_amount_compare_rate,
+      case
+        when previous_period.previous_acos is null then null
+        else current_period.acos - previous_period.previous_acos
+      end as acos_compare_delta,
+      case
+        when previous_period.previous_tacos is null then null
+        else current_period.tacos - previous_period.previous_tacos
+      end as tacos_compare_delta
+    from current_period
+    left join previous_period on previous_period.principal_uid = current_period.principal_uid
+    order by current_period.ad_sales_amount desc
+    limit 20`,
+    [...filterValues(filters), previous.startDate, previous.endDate],
+  );
+
+  return rows.map((row) => ({
+    name: row.name,
+    groupName: row.group_name,
+    adSalesAmount: toNumber(row.ad_sales_amount),
+    adSalesAmountCompareRate:
+      row.ad_sales_amount_compare_rate === null || row.ad_sales_amount_compare_rate === undefined
+        ? undefined
+        : toNumber(row.ad_sales_amount_compare_rate),
+    acos: toNumber(row.acos),
+    acosCompareDelta: row.acos_compare_delta === null || row.acos_compare_delta === undefined ? undefined : toNumber(row.acos_compare_delta),
+    tacos: toNumber(row.tacos),
+    tacosCompareDelta: row.tacos_compare_delta === null || row.tacos_compare_delta === undefined ? undefined : toNumber(row.tacos_compare_delta),
   }));
 }

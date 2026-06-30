@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { BarChart3, Database, Goal, LineChart, Megaphone, WalletCards } from "lucide-react";
+import { BarChart3, Database, Goal, LineChart, Megaphone, Tags, WalletCards } from "lucide-react";
 
 const navItems = [
   { href: "/sales", label: "销售总览", icon: LineChart },
   { href: "/ads", label: "流量广告", icon: Megaphone },
   { href: "/profit", label: "利润分析", icon: WalletCards },
+  { href: "/product-lines", label: "品线产品表现", icon: Tags },
   { href: "/targets", label: "目标达成", icon: Goal },
   { href: "/data-status", label: "数据状态", icon: Database },
 ];

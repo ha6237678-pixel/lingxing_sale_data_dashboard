@@ -43,13 +43,11 @@ export function GlobalFilters({
   options,
   showComparisonMode = false,
   showComparisonRange = false,
-  showProductLine = true,
 }: {
   filters: DashboardFilters;
   options: FilterOptions;
   showComparisonMode?: boolean;
   showComparisonRange?: boolean;
-  showProductLine?: boolean;
 }) {
   const initialFilters = showComparisonMode ? normalizeComparisonFilters(filters) : filters;
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(initialFilters.comparisonMode ?? "day");
@@ -57,11 +55,8 @@ export function GlobalFilters({
   const [endDate, setEndDate] = useState(initialFilters.endDate);
   const [groupName, setGroupName] = useState(filters.groupName ?? "");
   const [principalUid, setPrincipalUid] = useState(filters.principalUid ?? "");
-  const [productLine, setProductLine] = useState(filters.productLine ?? "");
 
-  const operators = groupName
-    ? options.operators.filter((operator) => operator.groupName === groupName)
-    : options.operators;
+  const operators = groupName ? options.operators.filter((operator) => operator.groupName === groupName) : options.operators;
   const comparisonRange = useMemo(
     () =>
       showComparisonMode || showComparisonRange
@@ -107,12 +102,11 @@ export function GlobalFilters({
   }
 
   const showRangeDates = !showComparisonMode || comparisonMode === "month" || comparisonMode === "custom";
-  const showProductLineFilter = showProductLine && options.productLines.length > 0;
 
   return (
     <form
       className={`mb-5 grid gap-3 border-b border-line bg-white p-4 shadow-panel ${
-        showComparisonMode ? "md:grid-cols-[repeat(6,minmax(0,1fr))_auto]" : "md:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+        showComparisonMode ? "md:grid-cols-[repeat(5,minmax(0,1fr))_auto]" : "md:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
       }`}
     >
       {showComparisonMode ? (
@@ -230,28 +224,7 @@ export function GlobalFilters({
           ))}
         </select>
       </label>
-      {showProductLineFilter ? (
-        <label className="space-y-1 text-xs text-muted">
-          <span>品线</span>
-          <select
-            className="h-10 w-full border border-line px-3 text-sm text-ink"
-            name="productLine"
-            value={productLine}
-            onChange={(event) => setProductLine(event.target.value)}
-          >
-            <option value="">全部品线</option>
-            {options.productLines.map((line) => (
-              <option key={line} value={line}>
-                {line}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      <button
-        className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-medium text-white hover:bg-slate-700"
-        type="submit"
-      >
+      <button className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-medium text-white hover:bg-slate-700" type="submit">
         <Filter className="h-4 w-4" />
         筛选
       </button>
