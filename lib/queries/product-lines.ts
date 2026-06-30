@@ -14,58 +14,35 @@ export type ProductLineFilterOptions = {
     operatorName: string;
     groupName: string;
     productLineName: string;
-    cid: string;
   }>;
 };
 
-export type ProductLineSummary = {
-  amount: number;
-  volume: number;
+export type ProductLineComparisonMetric = {
   orderItems: number;
   sessionsTotal: number;
   pageViewsTotal: number;
   cvr: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
   cpc: number;
+  ctr: number;
   spend: number;
   adSalesAmount: number;
-  adCvr: number;
   acos: number;
-  tacos: number;
+  adOrderQuantity: number;
+  adOrderRate: number;
+  adCvr: number;
+  impressions: number;
+  clicks: number;
+  cpa: number;
   natureClick: number;
   natureOrderItems: number;
   natureCvr: number;
 };
 
-export type ProductLineTrendPoint = {
-  date: string;
-  amount: number;
-  volume: number;
-  sessionsTotal: number;
-  pageViewsTotal: number;
-  spend: number;
-  adSalesAmount: number;
-  acos: number;
-  tacos: number;
-  cvr: number;
-};
-
-export type ProductLineRankingRow = {
+export type ProductLineComparisonRow = {
   productLineName: string;
-  cid: string;
-  operatorName: string;
-  groupName: string;
-  amount: number;
-  volume: number;
-  orderItems: number;
-  sessionsTotal: number;
-  cvr: number;
-  spend: number;
-  adSalesAmount: number;
-  acos: number;
-  tacos: number;
+  current: ProductLineComparisonMetric;
+  previous: ProductLineComparisonMetric;
+  compare: ProductLineComparisonMetric;
 };
 
 function productLineFilterValues(filters: DashboardFilters) {
@@ -75,7 +52,6 @@ function productLineFilterValues(filters: DashboardFilters) {
     filters.groupName ?? null,
     filters.principalUid ? Number(filters.principalUid) : null,
     filters.productLineName ?? null,
-    filters.cid ?? null,
   ];
 }
 
@@ -83,8 +59,53 @@ function productLineWhere() {
   return `stat_date between $1::date and $2::date
     and ($3::text is null or group_name = $3)
     and ($4::bigint is null or principal_uid = $4)
-    and ($5::text is null or product_line_name = $5)
-    and ($6::text is null or cid::text = $6)`;
+    and ($5::text is null or product_line_name = $5)`;
+}
+
+function toComparisonMetric(row: Record<string, string> | undefined): ProductLineComparisonMetric {
+  return {
+    orderItems: toNumber(row?.order_items),
+    sessionsTotal: toNumber(row?.sessions_total),
+    pageViewsTotal: toNumber(row?.page_views_total),
+    cvr: toNumber(row?.cvr),
+    cpc: toNumber(row?.cpc),
+    ctr: toNumber(row?.ctr),
+    spend: toNumber(row?.spend),
+    adSalesAmount: toNumber(row?.ad_sales_amount),
+    acos: toNumber(row?.acos),
+    adOrderQuantity: toNumber(row?.ad_order_quantity),
+    adOrderRate: toNumber(row?.ad_order_rate),
+    adCvr: toNumber(row?.ad_cvr),
+    impressions: toNumber(row?.impressions),
+    clicks: toNumber(row?.clicks),
+    cpa: toNumber(row?.cpa),
+    natureClick: toNumber(row?.nature_click),
+    natureOrderItems: toNumber(row?.nature_order_items),
+    natureCvr: toNumber(row?.nature_cvr),
+  };
+}
+
+function compareMetric(current: ProductLineComparisonMetric, previous: ProductLineComparisonMetric): ProductLineComparisonMetric {
+  return {
+    orderItems: previous.orderItems ? (current.orderItems - previous.orderItems) / previous.orderItems : 0,
+    sessionsTotal: previous.sessionsTotal ? (current.sessionsTotal - previous.sessionsTotal) / previous.sessionsTotal : 0,
+    pageViewsTotal: previous.pageViewsTotal ? (current.pageViewsTotal - previous.pageViewsTotal) / previous.pageViewsTotal : 0,
+    cvr: current.cvr - previous.cvr,
+    cpc: current.cpc - previous.cpc,
+    ctr: current.ctr - previous.ctr,
+    spend: previous.spend ? (current.spend - previous.spend) / previous.spend : 0,
+    adSalesAmount: previous.adSalesAmount ? (current.adSalesAmount - previous.adSalesAmount) / previous.adSalesAmount : 0,
+    acos: current.acos - previous.acos,
+    adOrderQuantity: previous.adOrderQuantity ? (current.adOrderQuantity - previous.adOrderQuantity) / previous.adOrderQuantity : 0,
+    adOrderRate: current.adOrderRate - previous.adOrderRate,
+    adCvr: current.adCvr - previous.adCvr,
+    impressions: previous.impressions ? (current.impressions - previous.impressions) / previous.impressions : 0,
+    clicks: previous.clicks ? (current.clicks - previous.clicks) / previous.clicks : 0,
+    cpa: current.cpa - previous.cpa,
+    natureClick: previous.natureClick ? (current.natureClick - previous.natureClick) / previous.natureClick : 0,
+    natureOrderItems: previous.natureOrderItems ? (current.natureOrderItems - previous.natureOrderItems) / previous.natureOrderItems : 0,
+    natureCvr: current.natureCvr - previous.natureCvr,
+  };
 }
 
 export async function getLatestProductLineDailyDate() {
@@ -99,12 +120,11 @@ export async function getProductLineFilterOptions(): Promise<ProductLineFilterOp
     operator_name: string;
     group_name: string;
     product_line_name: string;
-    cid: string;
   }>(
-    `select distinct principal_uid::text, operator_name, group_name, product_line_name, cid::text
+    `select distinct principal_uid::text, operator_name, group_name, product_line_name
      from fact_product_line_daily_metrics
      where product_line_name is not null
-     order by group_name, operator_name, product_line_name, cid`,
+     order by group_name, operator_name, product_line_name`,
   );
 
   const groups = Array.from(new Set(productLines.map((row) => row.group_name).filter(Boolean))).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
@@ -128,131 +148,54 @@ export async function getProductLineFilterOptions(): Promise<ProductLineFilterOp
       operatorName: row.operator_name,
       groupName: row.group_name,
       productLineName: row.product_line_name,
-      cid: row.cid,
     })),
   };
 }
 
-export async function getProductLineSummary(filters: DashboardFilters): Promise<ProductLineSummary> {
-  const rows = await query<Record<string, string>>(
-    `select
-      coalesce(sum(amount), 0) as amount,
-      coalesce(sum(volume), 0) as volume,
+export async function getProductLineComparisonRows(
+  filters: DashboardFilters,
+  previousRange: { startDate: string; endDate: string },
+): Promise<ProductLineComparisonRow[]> {
+  const selectSql = `select
+      product_line_name,
       coalesce(sum(order_items), 0) as order_items,
       coalesce(sum(sessions_total), 0) as sessions_total,
       coalesce(sum(page_views_total), 0) as page_views_total,
       coalesce(sum(order_items)::numeric / nullif(sum(sessions_total), 0), 0) as cvr,
-      coalesce(sum(impressions), 0) as impressions,
-      coalesce(sum(clicks), 0) as clicks,
-      coalesce(sum(clicks)::numeric / nullif(sum(impressions), 0), 0) as ctr,
       coalesce(sum(spend) / nullif(sum(clicks), 0), 0) as cpc,
+      coalesce(sum(clicks)::numeric / nullif(sum(impressions), 0), 0) as ctr,
       coalesce(sum(spend), 0) as spend,
       coalesce(sum(ad_sales_amount), 0) as ad_sales_amount,
-      coalesce(sum(ad_order_quantity)::numeric / nullif(sum(clicks), 0), 0) as ad_cvr,
       coalesce(sum(spend) / nullif(sum(ad_sales_amount), 0), 0) as acos,
-      coalesce(sum(spend) / nullif(sum(amount), 0), 0) as tacos,
+      coalesce(sum(ad_order_quantity), 0) as ad_order_quantity,
+      coalesce(sum(ad_order_quantity)::numeric / nullif(sum(order_items), 0), 0) as ad_order_rate,
+      coalesce(sum(ad_order_quantity)::numeric / nullif(sum(clicks), 0), 0) as ad_cvr,
+      coalesce(sum(impressions), 0) as impressions,
+      coalesce(sum(clicks), 0) as clicks,
+      coalesce(sum(spend) / nullif(sum(ad_order_quantity), 0), 0) as cpa,
       coalesce(sum(nature_click), 0) as nature_click,
       coalesce(sum(nature_order_items), 0) as nature_order_items,
       coalesce(sum(nature_order_items)::numeric / nullif(sum(nature_click), 0), 0) as nature_cvr
-     from fact_product_line_daily_metrics
-     where ${productLineWhere()}`,
-    productLineFilterValues(filters),
-  );
-  const row = rows[0] ?? {};
+    from fact_product_line_daily_metrics
+    where ${productLineWhere()}
+    group by product_line_name`;
+  const [currentRows, previousRows] = await Promise.all([
+    query<Record<string, string>>(selectSql, productLineFilterValues(filters)),
+    query<Record<string, string>>(selectSql, productLineFilterValues({ ...filters, startDate: previousRange.startDate, endDate: previousRange.endDate })),
+  ]);
+  const previousByLine = new Map(previousRows.map((row) => [row.product_line_name, row]));
 
-  return {
-    amount: toNumber(row.amount),
-    volume: toNumber(row.volume),
-    orderItems: toNumber(row.order_items),
-    sessionsTotal: toNumber(row.sessions_total),
-    pageViewsTotal: toNumber(row.page_views_total),
-    cvr: toNumber(row.cvr),
-    impressions: toNumber(row.impressions),
-    clicks: toNumber(row.clicks),
-    ctr: toNumber(row.ctr),
-    cpc: toNumber(row.cpc),
-    spend: toNumber(row.spend),
-    adSalesAmount: toNumber(row.ad_sales_amount),
-    adCvr: toNumber(row.ad_cvr),
-    acos: toNumber(row.acos),
-    tacos: toNumber(row.tacos),
-    natureClick: toNumber(row.nature_click),
-    natureOrderItems: toNumber(row.nature_order_items),
-    natureCvr: toNumber(row.nature_cvr),
-  };
-}
+  return currentRows
+    .map((row) => {
+      const current = toComparisonMetric(row);
+      const previous = toComparisonMetric(previousByLine.get(row.product_line_name));
 
-export async function getProductLineTrend(filters: DashboardFilters): Promise<ProductLineTrendPoint[]> {
-  const rows = await query<Record<string, string>>(
-    `select
-      stat_date::text as date,
-      coalesce(sum(amount), 0) as amount,
-      coalesce(sum(volume), 0) as volume,
-      coalesce(sum(sessions_total), 0) as sessions_total,
-      coalesce(sum(page_views_total), 0) as page_views_total,
-      coalesce(sum(spend), 0) as spend,
-      coalesce(sum(ad_sales_amount), 0) as ad_sales_amount,
-      coalesce(sum(spend) / nullif(sum(ad_sales_amount), 0), 0) as acos,
-      coalesce(sum(spend) / nullif(sum(amount), 0), 0) as tacos,
-      coalesce(sum(order_items)::numeric / nullif(sum(sessions_total), 0), 0) as cvr
-     from fact_product_line_daily_metrics
-     where ${productLineWhere()}
-     group by stat_date
-     order by stat_date`,
-    productLineFilterValues(filters),
-  );
-
-  return rows.map((row) => ({
-    date: row.date,
-    amount: toNumber(row.amount),
-    volume: toNumber(row.volume),
-    sessionsTotal: toNumber(row.sessions_total),
-    pageViewsTotal: toNumber(row.page_views_total),
-    spend: toNumber(row.spend),
-    adSalesAmount: toNumber(row.ad_sales_amount),
-    acos: toNumber(row.acos),
-    tacos: toNumber(row.tacos),
-    cvr: toNumber(row.cvr),
-  }));
-}
-
-export async function getProductLineRankings(filters: DashboardFilters): Promise<ProductLineRankingRow[]> {
-  const rows = await query<Record<string, string>>(
-    `select
-      group_name,
-      operator_name,
-      product_line_name,
-      cid::text,
-      coalesce(sum(amount), 0) as amount,
-      coalesce(sum(volume), 0) as volume,
-      coalesce(sum(order_items), 0) as order_items,
-      coalesce(sum(sessions_total), 0) as sessions_total,
-      coalesce(sum(order_items)::numeric / nullif(sum(sessions_total), 0), 0) as cvr,
-      coalesce(sum(spend), 0) as spend,
-      coalesce(sum(ad_sales_amount), 0) as ad_sales_amount,
-      coalesce(sum(spend) / nullif(sum(ad_sales_amount), 0), 0) as acos,
-      coalesce(sum(spend) / nullif(sum(amount), 0), 0) as tacos
-     from fact_product_line_daily_metrics
-     where ${productLineWhere()}
-     group by group_name, operator_name, principal_uid, product_line_name, cid
-     order by amount desc
-     limit 20`,
-    productLineFilterValues(filters),
-  );
-
-  return rows.map((row) => ({
-    productLineName: row.product_line_name,
-    cid: row.cid,
-    operatorName: row.operator_name,
-    groupName: row.group_name,
-    amount: toNumber(row.amount),
-    volume: toNumber(row.volume),
-    orderItems: toNumber(row.order_items),
-    sessionsTotal: toNumber(row.sessions_total),
-    cvr: toNumber(row.cvr),
-    spend: toNumber(row.spend),
-    adSalesAmount: toNumber(row.ad_sales_amount),
-    acos: toNumber(row.acos),
-    tacos: toNumber(row.tacos),
-  }));
+      return {
+        productLineName: row.product_line_name,
+        current,
+        previous,
+        compare: compareMetric(current, previous),
+      };
+    })
+    .sort((a, b) => b.current.orderItems - a.current.orderItems);
 }

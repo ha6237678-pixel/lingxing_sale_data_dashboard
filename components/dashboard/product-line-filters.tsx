@@ -1,15 +1,42 @@
 "use client";
 
 import type { ProductLineFilterOptions } from "@/lib/queries/product-lines";
-import type { DashboardFilters } from "@/lib/utils/date";
+import { normalizeComparisonFilters, type ComparisonMode, type DashboardFilters } from "@/lib/utils/date";
 import { Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 
+function parseDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getSevenDayRange(value: string) {
+  const start = parseDate(value);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  return {
+    startDate: formatDate(start),
+    endDate: formatDate(end),
+  };
+}
+
 export function ProductLineFilters({ filters, options }: { filters: DashboardFilters; options: ProductLineFilterOptions }) {
+  const initialFilters = normalizeComparisonFilters(filters);
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(initialFilters.comparisonMode ?? "day");
+  const [startDate, setStartDate] = useState(initialFilters.startDate);
+  const [endDate, setEndDate] = useState(initialFilters.endDate);
   const [groupName, setGroupName] = useState(filters.groupName ?? "");
   const [principalUid, setPrincipalUid] = useState(filters.principalUid ?? "");
   const [productLineName, setProductLineName] = useState(filters.productLineName ?? "");
-  const [cid, setCid] = useState(filters.cid ?? "");
 
   const operators = useMemo(
     () => (groupName ? options.operators.filter((operator) => operator.groupName === groupName) : options.operators),
@@ -26,34 +53,128 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
   );
   const lineNames = Array.from(new Set(productLines.map((line) => line.productLineName))).sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
 
+  function updateComparisonMode(nextMode: ComparisonMode) {
+    setComparisonMode(nextMode);
+
+    if (nextMode === "day") {
+      setEndDate(startDate);
+      return;
+    }
+
+    if (nextMode === "week") {
+      const range = getSevenDayRange(startDate);
+      setStartDate(range.startDate);
+      setEndDate(range.endDate);
+    }
+  }
+
+  function updateDayDate(value: string) {
+    setStartDate(value);
+    setEndDate(value);
+  }
+
+  function updateWeekStartDate(value: string) {
+    const range = getSevenDayRange(value);
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+  }
+
   function updateGroupName(value: string) {
     setGroupName(value);
     setPrincipalUid("");
     setProductLineName("");
-    setCid("");
   }
 
   function updatePrincipalUid(value: string) {
     setPrincipalUid(value);
     setProductLineName("");
-    setCid("");
   }
 
-  function updateProductLineName(value: string) {
-    setProductLineName(value);
-    setCid("");
-  }
+  const showRangeDates = comparisonMode === "month" || comparisonMode === "custom";
 
   return (
     <form className="mb-5 grid gap-3 border-b border-line bg-white p-4 shadow-panel md:grid-cols-[repeat(6,minmax(0,1fr))_auto]">
       <label className="space-y-1 text-xs text-muted">
-        <span>开始日期</span>
-        <input className="h-10 w-full border border-line px-3 text-sm text-ink" name="startDate" type="date" defaultValue={filters.startDate} />
+        <span>环比模式</span>
+        <select
+          className="h-10 w-full border border-line px-3 text-sm text-ink"
+          name="comparisonMode"
+          value={comparisonMode}
+          onChange={(event) => updateComparisonMode(event.target.value as ComparisonMode)}
+        >
+          <option value="day">日度看板</option>
+          <option value="week">周度看板</option>
+          <option value="month">月度看板</option>
+          <option value="custom">自定义</option>
+        </select>
       </label>
-      <label className="space-y-1 text-xs text-muted">
-        <span>结束日期</span>
-        <input className="h-10 w-full border border-line px-3 text-sm text-ink" name="endDate" type="date" defaultValue={filters.endDate} />
-      </label>
+
+      {comparisonMode === "day" ? (
+        <>
+          <label className="space-y-1 text-xs text-muted">
+            <span>日期</span>
+            <input
+              className="h-10 w-full border border-line px-3 text-sm text-ink"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => updateDayDate(event.target.value)}
+            />
+          </label>
+          <input name="endDate" type="hidden" value={endDate} />
+        </>
+      ) : null}
+
+      {comparisonMode === "week" ? (
+        <>
+          <label className="space-y-1 text-xs text-muted">
+            <span>周开始日期</span>
+            <input
+              className="h-10 w-full border border-line px-3 text-sm text-ink"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => updateWeekStartDate(event.target.value)}
+            />
+          </label>
+          <label className="space-y-1 text-xs text-muted">
+            <span>周结束日期</span>
+            <input
+              className="h-10 w-full border border-line bg-slate-50 px-3 text-sm text-muted"
+              name="endDate"
+              type="date"
+              value={endDate}
+              readOnly
+            />
+          </label>
+        </>
+      ) : null}
+
+      {showRangeDates ? (
+        <>
+          <label className="space-y-1 text-xs text-muted">
+            <span>开始日期</span>
+            <input
+              className="h-10 w-full border border-line px-3 text-sm text-ink"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </label>
+          <label className="space-y-1 text-xs text-muted">
+            <span>结束日期</span>
+            <input
+              className="h-10 w-full border border-line px-3 text-sm text-ink"
+              name="endDate"
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
+          </label>
+        </>
+      ) : null}
+
       <label className="space-y-1 text-xs text-muted">
         <span>组别</span>
         <select className="h-10 w-full border border-line px-3 text-sm text-ink" name="groupName" value={groupName} onChange={(event) => updateGroupName(event.target.value)}>
@@ -87,7 +208,7 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
           className="h-10 w-full border border-line px-3 text-sm text-ink"
           name="productLineName"
           value={productLineName}
-          onChange={(event) => updateProductLineName(event.target.value)}
+          onChange={(event) => setProductLineName(event.target.value)}
         >
           <option value="">全部品线</option>
           {lineNames.map((lineName) => (
@@ -95,25 +216,6 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
               {lineName}
             </option>
           ))}
-        </select>
-      </label>
-      <label className="space-y-1 text-xs text-muted">
-        <span>品线 ID</span>
-        <select
-          className="h-10 w-full border border-line px-3 text-sm text-ink disabled:bg-slate-50 disabled:text-muted"
-          disabled={!principalUid}
-          name="cid"
-          value={cid}
-          onChange={(event) => setCid(event.target.value)}
-        >
-          <option value="">{principalUid ? "全部 ID" : "先选择运营"}</option>
-          {productLines
-            .filter((line) => !productLineName || line.productLineName === productLineName)
-            .map((line) => (
-              <option key={`${line.principalUid}-${line.cid}`} value={line.cid}>
-                {line.productLineName} / {line.cid}
-              </option>
-            ))}
         </select>
       </label>
       <button className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-medium text-white hover:bg-slate-700" type="submit">
