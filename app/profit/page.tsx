@@ -10,8 +10,7 @@ import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
 import { getLatestSettlementProfitDate, getProfitRankings, getProfitSummary, getProfitTrend } from "@/lib/queries/profit";
 import { displayError } from "@/lib/services/errors";
-import { parseFilters, previousComparisonRange } from "@/lib/utils/date";
-import { format, startOfMonth } from "date-fns";
+import { normalizeComparisonFilters, parseFilters, previousComparisonRange } from "@/lib/utils/date";
 
 function rateData(summary: Awaited<ReturnType<typeof getProfitSummary>>) {
   return {
@@ -50,11 +49,11 @@ export default async function ProfitPage({
     if (latestSettlementDate && !hasEndDate) {
       filters.endDate = latestSettlementDate;
       if (!hasStartDate) {
-        filters.startDate = format(startOfMonth(new Date(`${latestSettlementDate}T00:00:00`)), "yyyy-MM-dd");
+        filters.startDate = latestSettlementDate;
       }
     }
 
-    filters.comparisonMode = "custom";
+    filters = normalizeComparisonFilters(filters);
     const comparisonRange = previousComparisonRange(filters);
     const comparisonFilters = {
       ...filters,
@@ -76,7 +75,7 @@ export default async function ProfitPage({
           title="利润数据总览"
           description="数据全部取自 fact_settlement_profit，默认结束日期跟随结算利润最新日期。"
         />
-        <GlobalFilters filters={filters} options={options} showComparisonRange />
+        <GlobalFilters filters={filters} options={options} showComparisonMode />
         <ProfitSummaryPanel previous={comparisonSummary} summary={summary} />
         <div className="mt-5">
           <TrendChart

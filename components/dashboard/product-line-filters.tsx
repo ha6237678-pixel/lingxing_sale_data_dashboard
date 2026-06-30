@@ -29,6 +29,25 @@ function getSevenDayRange(value: string) {
   };
 }
 
+function getMonthRange(value: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const [year, month] = value.split("-").map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
+
+  return {
+    startDate: formatDate(start),
+    endDate: formatDate(end),
+  };
+}
+
+function formatMonthValue(value: string) {
+  return value.slice(0, 7);
+}
+
 export function ProductLineFilters({ filters, options }: { filters: DashboardFilters; options: ProductLineFilterOptions }) {
   const initialFilters = normalizeComparisonFilters(filters);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(initialFilters.comparisonMode ?? "day");
@@ -66,6 +85,13 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
       setStartDate(range.startDate);
       setEndDate(range.endDate);
     }
+
+    if (nextMode === "month") {
+      const range = getMonthRange(formatMonthValue(startDate));
+      if (!range) return;
+      setStartDate(range.startDate);
+      setEndDate(range.endDate);
+    }
   }
 
   function updateDayDate(value: string) {
@@ -75,6 +101,13 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
 
   function updateWeekStartDate(value: string) {
     const range = getSevenDayRange(value);
+    setStartDate(range.startDate);
+    setEndDate(range.endDate);
+  }
+
+  function updateMonth(value: string) {
+    const range = getMonthRange(value);
+    if (!range) return;
     setStartDate(range.startDate);
     setEndDate(range.endDate);
   }
@@ -90,7 +123,7 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
     setProductLineName("");
   }
 
-  const showRangeDates = comparisonMode === "month" || comparisonMode === "custom";
+  const showRangeDates = comparisonMode === "custom";
 
   return (
     <form className="mb-5 grid gap-3 border-b border-line bg-white p-4 shadow-panel md:grid-cols-[repeat(6,minmax(0,1fr))_auto]">
@@ -147,6 +180,22 @@ export function ProductLineFilters({ filters, options }: { filters: DashboardFil
               readOnly
             />
           </label>
+        </>
+      ) : null}
+
+      {comparisonMode === "month" ? (
+        <>
+          <label className="space-y-1 text-xs text-muted">
+            <span>月份</span>
+            <input
+              className="h-10 w-full border border-line px-3 text-sm text-ink"
+              type="month"
+              value={formatMonthValue(startDate)}
+              onChange={(event) => updateMonth(event.target.value)}
+            />
+          </label>
+          <input name="startDate" type="hidden" value={startDate} />
+          <input name="endDate" type="hidden" value={endDate} />
         </>
       ) : null}
 

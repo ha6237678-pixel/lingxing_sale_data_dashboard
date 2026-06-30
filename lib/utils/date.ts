@@ -49,7 +49,17 @@ export function parseComparisonMode(value: string | undefined): ComparisonMode {
 }
 
 export function normalizeComparisonFilters(filters: DashboardFilters): DashboardFilters {
-  if (filters.comparisonMode === "month" || filters.comparisonMode === "custom") {
+  if (filters.comparisonMode === "month") {
+    const monthDate = parseISO(filters.startDate);
+
+    return {
+      ...filters,
+      startDate: format(startOfMonth(monthDate), "yyyy-MM-dd"),
+      endDate: format(endOfMonth(monthDate), "yyyy-MM-dd"),
+    };
+  }
+
+  if (filters.comparisonMode === "custom") {
     return filters;
   }
 

@@ -10,19 +10,32 @@ export function ProfitRateDeltaBarChart({
   current: ProfitRateData;
   previous: ProfitRateData;
 }) {
-  const chartData = profitRateSeries.map((item) => {
-    const value = current[item.key] - previous[item.key];
+  const grossRateDelta = current.grossRate - previous.grossRate;
+  const grossRateDeltaPositive = grossRateDelta >= 0;
+  const chartData = profitRateSeries.filter((item) => item.key !== "grossRate").map((item) => {
+    const value = previous[item.key] - current[item.key];
 
     return {
       name: item.name,
       value,
-      color: value >= 0 ? "#16a34a" : "#dc2626",
+      color: value > 0 ? "#dc2626" : "#16a34a",
     };
   });
 
   return (
     <section className="mt-5 border border-line bg-white p-4 shadow-panel">
-      <div className="mb-3 text-sm font-semibold text-ink">利润结构环比差值</div>
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold text-ink">利润结构环比差值</div>
+        </div>
+        <div className="min-w-28 border border-line bg-white px-3 py-2 shadow-sm">
+          <div className="text-xs font-semibold text-ink">本期利润率变化</div>
+          <div className={`mt-1 text-2xl font-semibold leading-none ${grossRateDeltaPositive ? "text-emerald-600" : "text-red-600"}`}>
+            {grossRateDeltaPositive ? "+" : ""}
+            {formatRatePercent(grossRateDelta)}
+          </div>
+        </div>
+      </div>
       <div className="h-96">
         <ResponsiveContainer height="100%" width="100%">
           <BarChart data={chartData} layout="vertical" margin={{ bottom: 0, left: 16, right: 24, top: 10 }}>

@@ -11,7 +11,7 @@ import {
 } from "@/lib/queries/product-lines";
 import { displayError } from "@/lib/services/errors";
 import { normalizeComparisonFilters, parseFilters, previousComparisonRange, type DashboardFilters } from "@/lib/utils/date";
-import { format, startOfMonth } from "date-fns";
+import { endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 
 type MetricColumn = {
   key: keyof ProductLineComparisonMetric;
@@ -82,26 +82,44 @@ function compareClassName(value: number) {
 async function normalizeProductLineFilters(params?: Record<string, string | string[] | undefined>): Promise<DashboardFilters> {
   const parsed = parseFilters(params);
   const filters = normalizeComparisonFilters(parsed);
+  const monthFilters =
+    filters.comparisonMode === "month"
+      ? {
+          ...filters,
+          startDate: format(startOfMonth(parseISO(filters.startDate)), "yyyy-MM-dd"),
+          endDate: format(endOfMonth(parseISO(filters.startDate)), "yyyy-MM-dd"),
+        }
+      : filters;
 
   if (params?.startDate || params?.endDate) {
-    return filters;
+    return monthFilters;
   }
 
   const latestDate = await getLatestProductLineDailyDate();
-  if (!latestDate) return filters;
+  if (!latestDate) return monthFilters;
 
   const defaultFilters = {
-    ...filters,
+    ...monthFilters,
     startDate: format(startOfMonth(new Date(`${latestDate}T00:00:00`)), "yyyy-MM-dd"),
     endDate: latestDate,
   };
 
-  return normalizeComparisonFilters(defaultFilters);
+  const normalizedDefaultFilters = normalizeComparisonFilters(defaultFilters);
+
+  if (normalizedDefaultFilters.comparisonMode === "month") {
+    return {
+      ...normalizedDefaultFilters,
+      startDate: format(startOfMonth(parseISO(normalizedDefaultFilters.startDate)), "yyyy-MM-dd"),
+      endDate: format(endOfMonth(parseISO(normalizedDefaultFilters.startDate)), "yyyy-MM-dd"),
+    };
+  }
+
+  return normalizedDefaultFilters;
 }
 
 function formatRangeLabel(startDate: string, endDate: string, comparisonMode: DashboardFilters["comparisonMode"]) {
   if (comparisonMode === "month") {
-    return `${Number(endDate.slice(5, 7))}月`;
+    return `${endDate.slice(2, 4)}年${Number(endDate.slice(5, 7))}月`;
   }
 
   if (startDate === endDate) {
