@@ -1,4 +1,4 @@
-import { SelectableSalesTrendChart } from "@/components/charts/selectable-sales-trend-chart";
+import { SelectableSalesAmountTrendChart, SelectableSalesTrendChart } from "@/components/charts/selectable-sales-trend-chart";
 import { AppShell } from "@/components/dashboard/app-shell";
 import { GlobalFilters } from "@/components/dashboard/global-filters";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -49,7 +49,8 @@ export default async function SalesPage({
           <MetricCard label="B2B 销量" value={formatNumber(summary.b2bVolume)} />
           <MetricCard label="B2B 订单量" value={formatNumber(summary.b2bOrderItems)} />
         </div>
-        <div className="mt-5">
+        <div className="mt-5 space-y-5">
+          <SelectableSalesAmountTrendChart data={trend} />
           <SelectableSalesTrendChart data={trend} />
         </div>
         <div className="mt-5 space-y-5">

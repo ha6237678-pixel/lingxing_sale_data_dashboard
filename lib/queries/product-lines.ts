@@ -45,6 +45,34 @@ export type ProductLineComparisonRow = {
   compare: ProductLineComparisonMetric;
 };
 
+export type ProductLineSettlementMetric = {
+  volume: number;
+  salesAmount: number;
+  grossProfit: number;
+  grossRate: number;
+  adSalesQuantity: number;
+  adSalesAmount: number;
+  adsCost: number;
+  refundsRate: number;
+  adsCostRate: number;
+  discountRate: number;
+  acos: number;
+  tacos: number;
+  firstTripRate: number;
+  purchaseRate: number;
+  fbaRate: number;
+  storageRate: number;
+  platformRate: number;
+  customerPrice: number;
+};
+
+export type ProductLineSettlementRow = {
+  productLineName: string;
+  current: ProductLineSettlementMetric;
+  previous: ProductLineSettlementMetric;
+  compare: ProductLineSettlementMetric;
+};
+
 function productLineFilterValues(filters: DashboardFilters) {
   return [
     filters.startDate,
@@ -57,6 +85,13 @@ function productLineFilterValues(filters: DashboardFilters) {
 
 function productLineWhere() {
   return `stat_date between $1::date and $2::date
+    and ($3::text is null or group_name = $3)
+    and ($4::bigint is null or principal_uid = $4)
+    and ($5::text is null or product_line_name = $5)`;
+}
+
+function productLineSettlementWhere() {
+  return `settlement_date between $1::date and $2::date
     and ($3::text is null or group_name = $3)
     and ($4::bigint is null or principal_uid = $4)
     and ($5::text is null or product_line_name = $5)`;
@@ -105,6 +140,52 @@ function compareMetric(current: ProductLineComparisonMetric, previous: ProductLi
     natureClick: previous.natureClick ? (current.natureClick - previous.natureClick) / previous.natureClick : 0,
     natureOrderItems: previous.natureOrderItems ? (current.natureOrderItems - previous.natureOrderItems) / previous.natureOrderItems : 0,
     natureCvr: current.natureCvr - previous.natureCvr,
+  };
+}
+
+function toSettlementMetric(row: Record<string, string> | undefined): ProductLineSettlementMetric {
+  return {
+    volume: toNumber(row?.volume),
+    salesAmount: toNumber(row?.sales_amount),
+    grossProfit: toNumber(row?.gross_profit),
+    grossRate: toNumber(row?.gross_rate),
+    adSalesQuantity: toNumber(row?.ad_sales_quantity),
+    adSalesAmount: toNumber(row?.ad_sales_amount),
+    adsCost: toNumber(row?.ads_cost),
+    refundsRate: toNumber(row?.refunds_rate),
+    adsCostRate: toNumber(row?.ads_cost_rate),
+    discountRate: toNumber(row?.discount_rate),
+    acos: toNumber(row?.acos),
+    tacos: toNumber(row?.tacos),
+    firstTripRate: toNumber(row?.first_trip_rate),
+    purchaseRate: toNumber(row?.purchase_rate),
+    fbaRate: toNumber(row?.fba_rate),
+    storageRate: toNumber(row?.storage_rate),
+    platformRate: toNumber(row?.platform_rate),
+    customerPrice: toNumber(row?.customer_price),
+  };
+}
+
+function compareSettlementMetric(current: ProductLineSettlementMetric, previous: ProductLineSettlementMetric): ProductLineSettlementMetric {
+  return {
+    volume: previous.volume ? (current.volume - previous.volume) / previous.volume : 0,
+    salesAmount: previous.salesAmount ? (current.salesAmount - previous.salesAmount) / previous.salesAmount : 0,
+    grossProfit: previous.grossProfit ? (current.grossProfit - previous.grossProfit) / Math.abs(previous.grossProfit) : 0,
+    grossRate: current.grossRate - previous.grossRate,
+    adSalesQuantity: previous.adSalesQuantity ? (current.adSalesQuantity - previous.adSalesQuantity) / previous.adSalesQuantity : 0,
+    adSalesAmount: previous.adSalesAmount ? (current.adSalesAmount - previous.adSalesAmount) / previous.adSalesAmount : 0,
+    adsCost: previous.adsCost ? (current.adsCost - previous.adsCost) / previous.adsCost : 0,
+    refundsRate: current.refundsRate - previous.refundsRate,
+    adsCostRate: current.adsCostRate - previous.adsCostRate,
+    discountRate: current.discountRate - previous.discountRate,
+    acos: current.acos - previous.acos,
+    tacos: current.tacos - previous.tacos,
+    firstTripRate: current.firstTripRate - previous.firstTripRate,
+    purchaseRate: current.purchaseRate - previous.purchaseRate,
+    fbaRate: current.fbaRate - previous.fbaRate,
+    storageRate: current.storageRate - previous.storageRate,
+    platformRate: current.platformRate - previous.platformRate,
+    customerPrice: previous.customerPrice ? (current.customerPrice - previous.customerPrice) / previous.customerPrice : 0,
   };
 }
 
@@ -198,4 +279,52 @@ export async function getProductLineComparisonRows(
       };
     })
     .sort((a, b) => b.current.orderItems - a.current.orderItems);
+}
+
+export async function getProductLineSettlementRows(
+  filters: DashboardFilters,
+  previousRange: { startDate: string; endDate: string },
+): Promise<ProductLineSettlementRow[]> {
+  const selectSql = `select
+      product_line_name,
+      coalesce(sum(total_sales_quantity), 0) as volume,
+      coalesce(sum(total_sales_amount_with_tax), 0) as sales_amount,
+      coalesce(sum(gross_profit), 0) as gross_profit,
+      coalesce(sum(gross_profit) / nullif(sum(total_sales_amount_with_tax), 0), 0) as gross_rate,
+      coalesce(sum(total_ads_sales_quantity), 0) as ad_sales_quantity,
+      coalesce(sum(total_ads_sales), 0) as ad_sales_amount,
+      coalesce(sum(total_ads_cost), 0) as ads_cost,
+      coalesce(sum(total_sales_refunds) / nullif(sum(total_sales_amount_with_tax), 0), 0) as refunds_rate,
+      coalesce(sum(total_ads_cost) / nullif(sum(total_sales_amount_with_tax), 0), 0) as ads_cost_rate,
+      coalesce(sum(promotional_rebates) / nullif(sum(total_sales_amount_with_tax), 0), 0) as discount_rate,
+      coalesce(sum(total_ads_cost) / nullif(sum(total_ads_sales), 0), 0) as acos,
+      coalesce(sum(total_ads_cost) / nullif(sum(total_sales_amount_with_tax), 0), 0) as tacos,
+      coalesce(sum(cg_transport_costs) / nullif(sum(total_sales_amount_with_tax), 0), 0) as first_trip_rate,
+      coalesce(sum(cg_price) / nullif(sum(total_sales_amount_with_tax), 0), 0) as purchase_rate,
+      coalesce(sum(fba_delivery_fee) / nullif(sum(total_sales_amount_with_tax), 0), 0) as fba_rate,
+      coalesce(sum(total_storage_fee) / nullif(sum(total_sales_amount_with_tax), 0), 0) as storage_rate,
+      coalesce(sum(platform_fee) / nullif(sum(total_sales_amount_with_tax), 0), 0) as platform_rate,
+      coalesce(sum(total_sales_amount_with_tax) / nullif(sum(total_sales_quantity), 0), 0) as customer_price
+    from fact_product_line_settlement_profit
+    where ${productLineSettlementWhere()}
+    group by product_line_name`;
+  const [currentRows, previousRows] = await Promise.all([
+    query<Record<string, string>>(selectSql, productLineFilterValues(filters)),
+    query<Record<string, string>>(selectSql, productLineFilterValues({ ...filters, startDate: previousRange.startDate, endDate: previousRange.endDate })),
+  ]);
+  const previousByLine = new Map(previousRows.map((row) => [row.product_line_name, row]));
+
+  return currentRows
+    .map((row) => {
+      const current = toSettlementMetric(row);
+      const previous = toSettlementMetric(previousByLine.get(row.product_line_name));
+
+      return {
+        productLineName: row.product_line_name,
+        current,
+        previous,
+        compare: compareSettlementMetric(current, previous),
+      };
+    })
+    .sort((a, b) => b.current.salesAmount - a.current.salesAmount);
 }

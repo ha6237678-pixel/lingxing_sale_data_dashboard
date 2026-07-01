@@ -17,10 +17,15 @@ export type SalesSummary = {
 export type TrendPoint = {
   date: string;
   amount: number;
+  adSalesAmount: number;
+  b2bAmount: number;
   volume: number;
   orderItems: number;
+  b2bOrderItems: number;
+  b2bOrderRate: number;
+  adOrderQuantity: number;
+  adOrderRate: number;
   spend?: number;
-  adSalesAmount?: number;
   acos?: number;
   tacos?: number;
   grossProfit?: number;
@@ -76,6 +81,8 @@ export async function getSalesTrend(filters: DashboardFilters): Promise<TrendPoi
     `select
       stat_date::text as date,
       coalesce(sum(amount), 0) as amount,
+      coalesce(sum(ad_sales_amount), 0) as ad_sales_amount,
+      coalesce(sum(b2b_amount), 0) as b2b_amount,
       coalesce(sum(volume), 0) as volume,
       coalesce(sum(order_items), 0) as order_items,
       coalesce(sum(b2b_order_items), 0) as b2b_order_items,
@@ -94,6 +101,8 @@ export async function getSalesTrend(filters: DashboardFilters): Promise<TrendPoi
   return rows.map((row) => ({
     date: row.date,
     amount: toNumber(row.amount),
+    adSalesAmount: toNumber(row.ad_sales_amount),
+    b2bAmount: toNumber(row.b2b_amount),
     volume: toNumber(row.volume),
     orderItems: toNumber(row.order_items),
     b2bOrderItems: toNumber(row.b2b_order_items),

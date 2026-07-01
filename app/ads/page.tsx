@@ -170,6 +170,8 @@ export default async function AdsPage({
             ]}
             valueFormat="percent"
           />
+        </div>
+        <div className="mt-5">
           <SelectableAdsCvrTrendChart data={trend} />
         </div>
         <AdsRankingTable rows={rankings} />

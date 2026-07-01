@@ -6,19 +6,34 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 type SalesTrendPoint = {
   date: string;
   amount: number;
-  volume: number;
+  adSalesAmount: number;
+  b2bAmount: number;
   orderItems: number;
+  adOrderQuantity: number;
+  b2bOrderItems: number;
 };
 
-type MetricKey = "amount" | "volume" | "orderItems";
+type MetricKey = "amount" | "adSalesAmount" | "b2bAmount" | "orderItems" | "adOrderQuantity" | "b2bOrderItems";
 
-const metrics: Array<{ key: MetricKey; label: string; color: string }> = [
-  { key: "amount", label: "销售额", color: "#0f766e" },
-  { key: "volume", label: "销量", color: "#2563eb" },
-  { key: "orderItems", label: "订单量", color: "#dc5f45" },
+type MetricConfig = {
+  key: MetricKey;
+  label: string;
+  color: string;
+};
+
+const salesAmountMetrics: MetricConfig[] = [
+  { key: "amount", label: "销售额", color: "#2563eb" },
+  { key: "adSalesAmount", label: "广告销售额", color: "#dc5f45" },
+  { key: "b2bAmount", label: "B2B销售额", color: "#0f766e" },
 ];
 
-function formatValue(value: unknown) {
+const salesQuantityMetrics: MetricConfig[] = [
+  { key: "orderItems", label: "订单量", color: "#2563eb" },
+  { key: "adOrderQuantity", label: "广告订单量", color: "#dc5f45" },
+  { key: "b2bOrderItems", label: "B2B订单量", color: "#0f766e" },
+];
+
+function formatNumberValue(value: unknown) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "-";
 
@@ -27,12 +42,34 @@ function formatValue(value: unknown) {
   }).format(num);
 }
 
-export function SelectableSalesTrendChart({ data }: { data: SalesTrendPoint[] }) {
-  const [selected, setSelected] = useState<MetricKey[]>(["amount"]);
+function formatMoneyValue(value: unknown) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "-";
+
+  return new Intl.NumberFormat("zh-CN", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(num);
+}
+
+function SelectableTrendChart({
+  data,
+  metrics,
+  title,
+  valueType = "number",
+}: {
+  data: SalesTrendPoint[];
+  metrics: MetricConfig[];
+  title: string;
+  valueType?: "number" | "money";
+}) {
+  const [selected, setSelected] = useState<MetricKey[]>(metrics.map((metric) => metric.key));
+  const formatValue = valueType === "money" ? formatMoneyValue : formatNumberValue;
 
   const visibleMetrics = useMemo(
     () => metrics.filter((metric) => selected.includes(metric.key)),
-    [selected],
+    [metrics, selected],
   );
 
   function toggleMetric(key: MetricKey) {
@@ -48,7 +85,7 @@ export function SelectableSalesTrendChart({ data }: { data: SalesTrendPoint[] })
   return (
     <section className="border border-line bg-white p-4 shadow-panel">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-ink">销售趋势</div>
+        <div className="text-sm font-semibold text-ink">{title}</div>
         <div className="flex flex-wrap gap-2">
           {metrics.map((metric) => {
             const active = selected.includes(metric.key);
@@ -62,16 +99,14 @@ export function SelectableSalesTrendChart({ data }: { data: SalesTrendPoint[] })
                 style={
                   active
                     ? {
-                        backgroundColor: "#facc15",
-                        borderColor: "#eab308",
-                        color: "#0f172a",
+                        backgroundColor: metric.color,
+                        borderColor: metric.color,
+                        color: "#ffffff",
                       }
                     : undefined
                 }
                 className={`rounded-md border px-3 py-1.5 text-sm font-semibold transition ${
-                  active
-                    ? "shadow-sm"
-                    : "border-line bg-white text-ink hover:border-[#eab308] hover:bg-[#fef9c3]"
+                  active ? "shadow-sm" : "border-line bg-white text-ink hover:bg-slate-50"
                 }`}
               >
                 {metric.label}
@@ -108,4 +143,12 @@ export function SelectableSalesTrendChart({ data }: { data: SalesTrendPoint[] })
       </div>
     </section>
   );
+}
+
+export function SelectableSalesAmountTrendChart({ data }: { data: SalesTrendPoint[] }) {
+  return <SelectableTrendChart data={data} metrics={salesAmountMetrics} title="销售额趋势" valueType="money" />;
+}
+
+export function SelectableSalesTrendChart({ data }: { data: SalesTrendPoint[] }) {
+  return <SelectableTrendChart data={data} metrics={salesQuantityMetrics} title="销量趋势" />;
 }

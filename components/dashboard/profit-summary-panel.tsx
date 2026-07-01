@@ -17,7 +17,7 @@ function CompareLine({ value }: { value?: number }) {
 
   const positive = value >= 0;
   return (
-    <div className={`mt-2 text-sm font-semibold ${positive ? "text-emerald-600" : "text-red-600"}`}>
+    <div className={`mt-2 text-sm font-semibold ${positive ? "text-red-600" : "text-emerald-600"}`}>
       {positive ? "↑" : "↓"}
       {formatPercent(Math.abs(value))}
     </div>
