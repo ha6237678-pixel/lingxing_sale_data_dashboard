@@ -26,6 +26,99 @@ function compareClassName(value: number | undefined, inverse = false) {
   return value > 0 === positiveIsGood ? "text-emerald-700" : "text-coral";
 }
 
+function changeClassName(value: number | undefined) {
+  if (value === undefined || value === 0) return "text-muted";
+
+  return value > 0 ? "text-red-600" : "text-emerald-700";
+}
+
+function buildAdsAdvice(row: AdsRankingRow, medianAdSalesAmount: number) {
+  const salesChange = row.adSalesAmountCompareRate ?? 0;
+  const acosChange = row.acosCompareDelta ?? 0;
+  const tacosChange = row.tacosCompareDelta ?? 0;
+  const hasSalesDrop = salesChange < -0.05;
+  const hasAcosWorse = acosChange > 0.01;
+  const hasTacosWorse = tacosChange > 0.01;
+  const hasEfficiencyImproved = acosChange < 0 && tacosChange < 0;
+  const hasLowSalesHighAcos = row.adSalesAmount < medianAdSalesAmount && row.acos > 0.25;
+  const hasHighSalesHighTacos = row.adSalesAmount >= medianAdSalesAmount && row.tacos > 0.2;
+  const canScale = salesChange > 0.05 && acosChange <= 0 && tacosChange <= 0;
+
+  if (hasSalesDrop && (hasAcosWorse || hasTacosWorse)) {
+    return {
+      type: "销售下降且效率变差",
+      metrics: `广告销售额 ${formatCompare(row.adSalesAmountCompareRate)}；ACOS ${formatCompare(row.acosCompareDelta)}；TACOS ${formatCompare(row.tacosCompareDelta)}`,
+      conclusion: "广告销售下降，同时成本效率恶化，优先级最高。",
+      action: "收缩低效活动，检查搜索词、否词、CPC、广告CVR和Listing转化。",
+    };
+  }
+
+  if (hasSalesDrop && hasEfficiencyImproved) {
+    return {
+      type: "销售下降但效率改善",
+      metrics: `广告销售额 ${formatCompare(row.adSalesAmountCompareRate)}；ACOS ${formatCompare(row.acosCompareDelta)}；TACOS ${formatCompare(row.tacosCompareDelta)}`,
+      conclusion: "广告效率变好但规模不足，需要确认广告是否被动收缩。",
+      action: "检查预算是否受限、曝光是否下降、核心词排名是否掉，以及高效活动是否有放量空间。",
+    };
+  }
+
+  if (salesChange > 0.05 && (hasAcosWorse || hasTacosWorse)) {
+    return {
+      type: "放量但效率变差",
+      metrics: `广告销售额 ${formatCompare(row.adSalesAmountCompareRate)}；ACOS ${formatCompare(row.acosCompareDelta)}；TACOS ${formatCompare(row.tacosCompareDelta)}`,
+      conclusion: "广告销售增长，但成本效率变差，不建议盲目加预算。",
+      action: "先查高花费低转化活动、CPC、CTR、广告CVR和搜索词浪费。",
+    };
+  }
+
+  if (hasLowSalesHighAcos) {
+    return {
+      type: "广告销售额低但ACOS高",
+      metrics: `广告销售额 ${formatMoney(row.adSalesAmount)}；ACOS ${formatPercent(row.acos)}`,
+      conclusion: "广告规模偏低且获客成本偏高，继续放量风险较大。",
+      action: "优先排查低效广告活动，降低高花费低转化词出价，必要时暂停低效投放。",
+    };
+  }
+
+  if (hasHighSalesHighTacos) {
+    return {
+      type: "广告销售额高但TACOS高",
+      metrics: `广告销售额 ${formatMoney(row.adSalesAmount)}；TACOS ${formatPercent(row.tacos)}`,
+      conclusion: "广告销售规模靠前，但整体广告依赖偏高。",
+      action: "评估广告是否挤压自然单，提升自然流量和自然转化，避免总销售过度依赖广告。",
+    };
+  }
+
+  if (hasSalesDrop) {
+    return {
+      type: "广告销售下降",
+      metrics: `广告销售额 ${formatCompare(row.adSalesAmountCompareRate)}`,
+      conclusion: "广告规模下降，需要确认是预算、曝光还是转化问题。",
+      action: "检查预算是否受限、广告展示是否下降、核心词排名和广告订单变化。",
+    };
+  }
+
+  if (hasAcosWorse || hasTacosWorse) {
+    return {
+      type: hasAcosWorse ? "ACOS恶化" : "TACOS恶化",
+      metrics: `ACOS ${formatCompare(row.acosCompareDelta)}；TACOS ${formatCompare(row.tacosCompareDelta)}`,
+      conclusion: "广告成本效率变差，需要控制费用率上升。",
+      action: "检查高花费低转化词、竞价、否词、广告CVR，以及广告是否挤压自然单。",
+    };
+  }
+
+  if (canScale) {
+    return {
+      type: "可放量建议",
+      metrics: `广告销售额 ${formatCompare(row.adSalesAmountCompareRate)}；ACOS ${formatCompare(row.acosCompareDelta)}；TACOS ${formatCompare(row.tacosCompareDelta)}`,
+      conclusion: "广告销售增长且效率没有变差，可以谨慎放量。",
+      action: "优先给高转化活动和有效搜索词小幅加预算，观察ACOS/TACOS是否稳定。",
+    };
+  }
+
+  return undefined;
+}
+
 function AdsRankingTable({ rows }: { rows: AdsRankingRow[] }) {
   return (
     <section className="mt-5 border border-line bg-white shadow-panel">
@@ -68,6 +161,66 @@ function AdsRankingTable({ rows }: { rows: AdsRankingRow[] }) {
               <tr>
                 <td className="px-4 py-8 text-center text-muted" colSpan={8}>
                   当前筛选范围暂无广告排行数据
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function AdsActionAdviceTable({ rows }: { rows: AdsRankingRow[] }) {
+  const sortedSalesAmounts = rows.map((row) => row.adSalesAmount).sort((a, b) => a - b);
+  const medianAdSalesAmount = sortedSalesAmounts.length ? sortedSalesAmounts[Math.floor(sortedSalesAmounts.length / 2)] : 0;
+  const adviceRows = rows
+    .map((row) => ({
+      row,
+      advice: buildAdsAdvice(row, medianAdSalesAmount),
+    }))
+    .filter((item): item is { row: AdsRankingRow; advice: NonNullable<ReturnType<typeof buildAdsAdvice>> } => Boolean(item.advice));
+
+  return (
+    <section className="mt-5 border border-line bg-white shadow-panel">
+      <div className="border-b border-line px-4 py-3">
+        <div className="text-sm font-semibold text-ink">广告异常监控与动作建议</div>
+        <div className="mt-1 text-xs text-muted">只显示触发异常或可放量建议的运营；环比上升为红色，下降为绿色。</div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs text-muted">
+            <tr>
+              <th className="px-4 py-3">运营负责人</th>
+              <th className="px-4 py-3">组别</th>
+              <th className="px-4 py-3">异常类型</th>
+              <th className="px-4 py-3">触发指标</th>
+              <th className="px-4 py-3">判断结论</th>
+              <th className="px-4 py-3">执行动作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {adviceRows.length ? (
+              adviceRows.map(({ row, advice }) => (
+                <tr key={`${row.groupName}-${row.name}-${advice.type}`} className="hover:bg-slate-50">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{row.name}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted">{row.groupName}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-ink">{advice.type}</td>
+                  <td className="min-w-[240px] px-4 py-3">
+                    <span className={changeClassName(row.adSalesAmountCompareRate)}>广告销售额 {formatCompare(row.adSalesAmountCompareRate)}</span>
+                    <span className="mx-1 text-muted">/</span>
+                    <span className={changeClassName(row.acosCompareDelta)}>ACOS {formatCompare(row.acosCompareDelta)}</span>
+                    <span className="mx-1 text-muted">/</span>
+                    <span className={changeClassName(row.tacosCompareDelta)}>TACOS {formatCompare(row.tacosCompareDelta)}</span>
+                  </td>
+                  <td className="min-w-[260px] px-4 py-3 text-ink">{advice.conclusion}</td>
+                  <td className="min-w-[320px] px-4 py-3 text-muted">{advice.action}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-4 py-8 text-center text-muted" colSpan={6}>
+                  当前筛选周期暂无广告异常或可放量建议
                 </td>
               </tr>
             )}
@@ -183,6 +336,7 @@ export default async function AdsPage({
           <SelectableAdsCvrTrendChart data={trend} />
         </div>
         <AdsRankingTable rows={rankings} />
+        <AdsActionAdviceTable rows={rankings} />
       </AppShell>
     );
   } catch (error) {
