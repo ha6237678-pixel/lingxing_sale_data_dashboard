@@ -7,6 +7,7 @@ const navItems = [
   { href: "/profit", label: "利润分析", icon: WalletCards },
   { href: "/product-lines", label: "品线分析", icon: Tags },
   { href: "/targets", label: "运营目标达成", icon: Goal },
+  { href: "/product-line-targets", label: "品线目标达成", icon: Goal },
   { href: "/data-status", label: "数据状态", icon: Database },
 ];
 
