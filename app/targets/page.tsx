@@ -79,7 +79,7 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
     return (
       <AppShell>
         <div className="mb-4">
-          <h1 className="text-xl font-semibold text-ink">目标达成</h1>
+          <h1 className="text-xl font-semibold text-ink">运营目标达成</h1>
           <div className="mt-1 text-sm leading-6 text-blue-700">
             <p>1. 数据源：取自【领星ERP-结算利润】模块。</p>
             <p>2. 时间筛选规则：系统每日自动获取 T-7 天（即当天往前推算第 7 天）的结算数据。</p>
@@ -149,7 +149,7 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
     return (
       <AppShell>
         <div className="mb-4">
-          <h1 className="text-xl font-semibold text-ink">目标达成</h1>
+          <h1 className="text-xl font-semibold text-ink">运营目标达成</h1>
         </div>
         <ErrorState message={displayError(error)} />
       </AppShell>

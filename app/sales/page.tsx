@@ -27,12 +27,20 @@ export default async function SalesPage({
       getSalesRankings(filters, "group"),
       getSalesRankings(filters, "operator"),
     ]);
+    const operatorCount = operatorRankings.length;
+    const operatorAverageAmount = operatorCount ? operatorRankings.reduce((sum, row) => sum + row.amount, 0) / operatorCount : 0;
+    const operatorAverageVolume = operatorCount ? operatorRankings.reduce((sum, row) => sum + row.volume, 0) / operatorCount : 0;
+    const operatorAverageOrderItems = operatorCount ? operatorRankings.reduce((sum, row) => sum + row.orderItems, 0) / operatorCount : 0;
+    const operatorRankingsWithAverageDiff = operatorRankings.map((row) => ({
+      ...row,
+      amountAverageDiff: row.amount - operatorAverageAmount,
+    }));
 
     return (
       <AppShell>
         <SectionTitle
-          title="销售数据总览"
-          description="按日期、组别、运营负责人查看销售额、销量、订单和 B2B 表现。"
+          title="销售总览"
+          description="查看销售额、销量、订单量、广告订单、B2B 和运营排行。"
         />
         <GlobalFilters filters={filters} options={options} showComparisonMode />
         <div className="grid gap-3 md:grid-cols-4">
@@ -45,9 +53,9 @@ export default async function SalesPage({
             hint="sum(ad_order_quantity) / sum(order_items)"
           />
           <MetricCard label="广告订单量" value={formatNumber(summary.adOrderQuantity)} />
-          <MetricCard label="B2B 销售额" value={formatMoney(summary.b2bAmount)} />
-          <MetricCard label="B2B 销量" value={formatNumber(summary.b2bVolume)} />
-          <MetricCard label="B2B 订单量" value={formatNumber(summary.b2bOrderItems)} />
+          <MetricCard label="B2B销售额" value={formatMoney(summary.b2bAmount)} />
+          <MetricCard label="B2B销量" value={formatNumber(summary.b2bVolume)} />
+          <MetricCard label="B2B订单量" value={formatNumber(summary.b2bOrderItems)} />
         </div>
         <div className="mt-5 space-y-5">
           <SelectableSalesAmountTrendChart data={trend} />
@@ -55,14 +63,19 @@ export default async function SalesPage({
         </div>
         <div className="mt-5 space-y-5">
           <RankingTable title="组别销售排行" rows={groupRankings} />
-          <RankingTable title="运营销售排行" rows={operatorRankings} />
+          <div className="grid gap-3 md:grid-cols-3">
+            <MetricCard label="人均销售额" value={formatMoney(operatorAverageAmount)} />
+            <MetricCard label="人均销量" value={formatNumber(operatorAverageVolume)} />
+            <MetricCard label="人均订单量" value={formatNumber(operatorAverageOrderItems)} />
+          </div>
+          <RankingTable title="运营销售排行" rows={operatorRankingsWithAverageDiff} showAmountAverageDiff />
         </div>
       </AppShell>
     );
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="销售数据总览" />
+        <SectionTitle title="销售总览" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

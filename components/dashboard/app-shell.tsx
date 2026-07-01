@@ -5,8 +5,8 @@ const navItems = [
   { href: "/sales", label: "销售总览", icon: LineChart },
   { href: "/ads", label: "流量广告", icon: Megaphone },
   { href: "/profit", label: "利润分析", icon: WalletCards },
-  { href: "/product-lines", label: "品线产品表现", icon: Tags },
-  { href: "/targets", label: "目标达成", icon: Goal },
+  { href: "/product-lines", label: "品线分析", icon: Tags },
+  { href: "/targets", label: "运营目标达成", icon: Goal },
   { href: "/data-status", label: "数据状态", icon: Database },
 ];
 

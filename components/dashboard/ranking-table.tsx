@@ -12,6 +12,7 @@ export type RankingTableRow = {
   adOrderRate?: number;
   grossProfit?: number;
   amountCompareRate?: number;
+  amountAverageDiff?: number;
   volumeCompareRate?: number;
   grossProfitCompareRate?: number;
 };
@@ -28,17 +29,24 @@ function compareClassName(value: number | undefined) {
   return value > 0 ? "text-emerald-700" : "text-coral";
 }
 
+function moneyDiffClassName(value: number | undefined) {
+  if (value === undefined || value === 0) return "text-muted";
+  return value > 0 ? "text-emerald-700" : "text-coral";
+}
+
 export function RankingTable({
   title,
   rows,
+  showAmountAverageDiff = false,
   variant = "sales",
 }: {
   title: string;
   rows: RankingTableRow[];
+  showAmountAverageDiff?: boolean;
   variant?: "sales" | "profit";
 }) {
   const isSales = variant === "sales";
-  const emptyColSpan = isSales ? 11 : 7;
+  const emptyColSpan = isSales ? (showAmountAverageDiff ? 12 : 11) : 7;
 
   return (
     <section className="border border-line bg-white shadow-panel">
@@ -51,14 +59,15 @@ export function RankingTable({
               <th className="whitespace-nowrap px-4 py-3">组别</th>
               <th className="whitespace-nowrap px-4 py-3 text-right">销售额</th>
               <th className="whitespace-nowrap px-4 py-3 text-right">销售额环比</th>
+              {isSales && showAmountAverageDiff ? <th className="whitespace-nowrap px-4 py-3 text-right">人均销售额差值</th> : null}
               <th className="whitespace-nowrap px-4 py-3 text-right">销量</th>
               {isSales ? <th className="whitespace-nowrap px-4 py-3 text-right">销量环比</th> : null}
-              {isSales ? <th className="whitespace-nowrap px-4 py-3 text-right">订单</th> : null}
+              {isSales ? <th className="whitespace-nowrap px-4 py-3 text-right">订单量</th> : null}
               {isSales ? (
                 <>
-                  <th className="whitespace-nowrap px-4 py-3 text-right">B2B订单</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">B2B订单量</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right">B2B订单占比</th>
-                  <th className="whitespace-nowrap px-4 py-3 text-right">广告订单</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right">广告订单量</th>
                   <th className="whitespace-nowrap px-4 py-3 text-right">广告订单占比</th>
                 </>
               ) : (
@@ -79,6 +88,11 @@ export function RankingTable({
                   <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${compareClassName(row.amountCompareRate)}`}>
                     {formatCompare(row.amountCompareRate)}
                   </td>
+                  {isSales && showAmountAverageDiff ? (
+                    <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${moneyDiffClassName(row.amountAverageDiff)}`}>
+                      {row.amountAverageDiff === undefined ? "-" : formatMoney(row.amountAverageDiff)}
+                    </td>
+                  ) : null}
                   <td className="whitespace-nowrap px-4 py-3 text-right">{row.volume === undefined ? "-" : formatNumber(row.volume)}</td>
                   {isSales ? (
                     <td className={`whitespace-nowrap px-4 py-3 text-right font-medium ${compareClassName(row.volumeCompareRate)}`}>
@@ -118,7 +132,7 @@ export function RankingTable({
             ) : (
               <tr>
                 <td className="px-4 py-8 text-center text-muted" colSpan={emptyColSpan}>
-                  暂无符合筛选条件的排行数据
+                  当前筛选范围暂无排行数据
                 </td>
               </tr>
             )}

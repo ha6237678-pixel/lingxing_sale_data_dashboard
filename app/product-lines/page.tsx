@@ -4,6 +4,7 @@ import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import {
   getLatestProductLineDailyDate,
+  getLatestProductLineSettlementDate,
   getProductLineComparisonRows,
   getProductLineFilterOptions,
   getProductLineSettlementRows,
@@ -211,10 +212,10 @@ function ProductLineDiagnostics({
       <div className="mb-2 text-sm font-semibold text-ink">异常诊断与运营建议</div>
       <div className="space-y-2">
         {diagnostics.map((item) => (
-          <div key={item.label} className="grid gap-3 border border-line bg-white px-3 py-2 text-sm md:grid-cols-[160px_1fr_2fr]">
-            <div className="font-semibold text-ink">{item.label}</div>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">{item.reasons}</div>
-            <div className="text-xs leading-5 text-muted">{item.suggestion}</div>
+          <div key={item.label} className="grid items-center gap-3 border border-line bg-white px-3 py-2 text-sm md:grid-cols-[160px_1fr_2fr]">
+            <div className="self-center font-semibold text-ink">{item.label}</div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 self-center text-xs">{item.reasons}</div>
+            <div className="self-center text-xs leading-5 text-muted">{item.suggestion}</div>
           </div>
         ))}
       </div>
@@ -282,7 +283,7 @@ function ProductPerformanceTable({
       <table className="w-full min-w-[1560px] table-fixed text-center text-xs">
         <thead>
           <tr className="bg-[#efd66a] text-black">
-            <th className="sticky left-0 z-20 w-24 bg-[#efd66a] px-3 py-2 text-left font-semibold shadow-[1px_0_0_#e2e8f0]">
+            <th className="sticky left-0 z-[2] w-24 bg-[#efd66a] px-3 py-2 text-left font-semibold shadow-[1px_0_0_#e2e8f0]">
               周期
             </th>
             {productMetricColumns.map((column) => (
@@ -295,7 +296,7 @@ function ProductPerformanceTable({
         <tbody className="bg-slate-100">
           {tableRows.map((tableRow) => (
             <tr key={`${row.productLineName}-product-${tableRow.kind}`} className="border-b border-white/70 last:border-b-0">
-              <td className="sticky left-0 z-10 bg-slate-100 px-3 py-2 text-left font-semibold text-slate-700 shadow-[1px_0_0_#e2e8f0]">
+              <td className="sticky left-0 z-[1] bg-slate-100 px-3 py-2 text-left font-semibold text-slate-700 shadow-[1px_0_0_#e2e8f0]">
                 {tableRow.label}
               </td>
               {productMetricColumns.map((column) => {
@@ -340,7 +341,7 @@ function SettlementPerformanceTable({
       <table className="w-full min-w-[1680px] table-fixed text-center text-xs">
         <thead>
           <tr className="bg-[#cfe4f6] text-black">
-            <th className="sticky left-0 z-20 w-24 bg-[#cfe4f6] px-3 py-2 text-left font-semibold shadow-[1px_0_0_#e2e8f0]">
+            <th className="sticky left-0 z-[2] w-24 bg-[#cfe4f6] px-3 py-2 text-left font-semibold shadow-[1px_0_0_#e2e8f0]">
               周期
             </th>
             {settlementMetricColumns.map((column) => (
@@ -353,7 +354,7 @@ function SettlementPerformanceTable({
         <tbody className="bg-slate-100">
           {tableRows.map((tableRow) => (
             <tr key={`${row.productLineName}-settlement-${tableRow.kind}`} className="border-b border-white/70 last:border-b-0">
-              <td className="sticky left-0 z-10 bg-slate-100 px-3 py-2 text-left font-semibold text-slate-700 shadow-[1px_0_0_#e2e8f0]">
+              <td className="sticky left-0 z-[1] bg-slate-100 px-3 py-2 text-left font-semibold text-slate-700 shadow-[1px_0_0_#e2e8f0]">
                 {tableRow.label}
               </td>
               {settlementMetricColumns.map((column) => {
@@ -428,17 +429,31 @@ export default async function ProductLinesPage({
   const previousLabel = formatRangeLabel(comparisonRange.startDate, comparisonRange.endDate, filters.comparisonMode);
 
   try {
-    const [options, productRows, settlementRows] = await Promise.all([
+    const [options, productRows, settlementRows, latestProductDate, latestSettlementDate] = await Promise.all([
       getProductLineFilterOptions(),
       getProductLineComparisonRows(filters, comparisonRange),
       getProductLineSettlementRows(filters, comparisonRange),
+      getLatestProductLineDailyDate(),
+      getLatestProductLineSettlementDate(),
     ]);
 
     return (
       <AppShell>
         <SectionTitle
-          title="品线产品表现"
-          description="按品线展示结算利润、产品表现、上一期、本期和环比变化。"
+          title="品线分析"
+          description={
+            <div className="space-y-1">
+              <div>
+                按品线展示{" "}
+                <span className="font-semibold text-blue-600">[领星-结算利润]</span>
+                {" "}和{" "}
+                <span className="font-semibold text-blue-600">[领星-产品表现]</span>
+                {" "}的数据
+              </div>
+              <div>品线产品表现最新日期：{latestProductDate ?? "-"}</div>
+              <div>品线结算利润最新日期：{latestSettlementDate ?? "-"}</div>
+            </div>
+          }
         />
         <ProductLineFilters filters={filters} options={options} />
         <ProductLineComparisonTable
@@ -452,7 +467,7 @@ export default async function ProductLinesPage({
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="品线产品表现" />
+        <SectionTitle title="品线分析" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

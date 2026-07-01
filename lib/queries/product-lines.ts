@@ -195,6 +195,14 @@ export async function getLatestProductLineDailyDate() {
   return rows[0]?.latest_date ?? undefined;
 }
 
+export async function getLatestProductLineSettlementDate() {
+  const rows = await query<{ latest_date: string | null }>(
+    "select max(settlement_date)::text as latest_date from fact_product_line_settlement_profit",
+  );
+
+  return rows[0]?.latest_date ?? undefined;
+}
+
 export async function getProductLineFilterOptions(): Promise<ProductLineFilterOptions> {
   const productLines = await query<{
     principal_uid: string;
