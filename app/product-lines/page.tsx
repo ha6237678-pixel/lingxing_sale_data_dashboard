@@ -440,7 +440,7 @@ export default async function ProductLinesPage({
     return (
       <AppShell>
         <SectionTitle
-          title="品线分析"
+          title="品线数据分析"
           description={
             <div className="space-y-1">
               <div>
@@ -467,7 +467,7 @@ export default async function ProductLinesPage({
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="品线分析" />
+        <SectionTitle title="品线数据分析" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

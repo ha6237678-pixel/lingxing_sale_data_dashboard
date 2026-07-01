@@ -39,6 +39,18 @@ export async function getLatestSettlementProfitDate() {
   return rows[0]?.latest_date ?? undefined;
 }
 
+export async function getSettlementProfitDateBounds() {
+  const rows = await query<{ min_date: string | null; max_date: string | null }>(
+    "select min(settlement_date)::text as min_date, max(settlement_date)::text as max_date from fact_settlement_profit",
+  );
+  const row = rows[0];
+
+  return {
+    minDate: row?.min_date ?? undefined,
+    maxDate: row?.max_date ?? undefined,
+  };
+}
+
 export async function getProfitSummary(filters: DashboardFilters): Promise<ProfitSummary> {
   const rows = await query<Record<string, string>>(
     `select
@@ -183,8 +195,7 @@ export async function getProfitRankings(filters: DashboardFilters) {
       end as gross_profit_compare_rate
     from current_period
     left join previous_period on previous_period.principal_uid = current_period.principal_uid
-    order by current_period.gross_profit desc
-    limit 10`,
+    order by current_period.gross_profit desc`,
     [...filterValues(filters), previous.startDate, previous.endDate],
   );
 

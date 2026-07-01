@@ -7,7 +7,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
-import { getAdsRankings, getAdsSummary, getAdsTrend, type AdsRankingRow } from "@/lib/queries/ads";
+import { getAdsRankings, getAdsSummary, getAdsTrend, getLatestAdsMetricDate, getOperatorMetricDateBounds, type AdsRankingRow } from "@/lib/queries/ads";
 import { displayError } from "@/lib/services/errors";
 import { normalizeComparisonFilters, parseFilters } from "@/lib/utils/date";
 import { formatMoney, formatMoneyDecimal, formatNumber, formatPercent } from "@/lib/utils/number";
@@ -86,20 +86,28 @@ export default async function AdsPage({
   const filters = normalizeComparisonFilters(parseFilters(await searchParams));
 
   try {
-    const [options, summary, trend, rankings] = await Promise.all([
+    const [options, summary, trend, rankings, latestMetricDate, dateBounds] = await Promise.all([
       getFilterOptions(),
       getAdsSummary(filters),
       getAdsTrend(filters),
       getAdsRankings(filters),
+      getLatestAdsMetricDate(),
+      getOperatorMetricDateBounds(),
     ]);
 
     return (
       <AppShell>
         <SectionTitle
-          title="流量与广告总览"
-          description="查看 Sessions、PV、总CVR、广告CTR、广告投入、ACOS/TACOS 和自然转化。"
+          title="运营广告表现"
+          description={
+            <div className="space-y-1">
+              <div>查看 Sessions、PV、总CVR、广告CTR、广告投入、ACOS/TACOS 和自然转化。</div>
+              <div>数据来源：领星产品表现。</div>
+              <div>当前运营产品表现最新日期：{latestMetricDate ?? "暂无数据"}</div>
+            </div>
+          }
         />
-        <GlobalFilters filters={filters} options={options} showComparisonMode />
+        <GlobalFilters dateBounds={dateBounds} filters={filters} options={options} showComparisonMode />
         <div className="grid gap-3 md:grid-cols-4">
           <MetricCard label="Sessions" value={formatNumber(summary.sessionsTotal)} />
           <MetricCard label="PV" value={formatNumber(summary.pageViewsTotal)} />
@@ -180,7 +188,7 @@ export default async function AdsPage({
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="流量与广告总览" />
+        <SectionTitle title="运营广告表现" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

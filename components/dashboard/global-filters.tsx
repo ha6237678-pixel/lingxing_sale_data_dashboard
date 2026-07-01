@@ -10,6 +10,11 @@ import {
 import { Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 
+export type DateBounds = {
+  minDate?: string;
+  maxDate?: string;
+};
+
 function formatDateLabel(value: string) {
   return value.split("-").join("/");
 }
@@ -57,12 +62,22 @@ function formatMonthValue(value: string) {
   return value.slice(0, 7);
 }
 
+function subtractDays(value: string | undefined, days: number) {
+  if (!value) return undefined;
+  const date = parseDate(value);
+  date.setDate(date.getDate() - days);
+
+  return formatDate(date);
+}
+
 export function GlobalFilters({
+  dateBounds,
   filters,
   options,
   showComparisonMode = false,
   showComparisonRange = false,
 }: {
+  dateBounds?: DateBounds;
   filters: DashboardFilters;
   options: FilterOptions;
   showComparisonMode?: boolean;
@@ -76,6 +91,9 @@ export function GlobalFilters({
   const [principalUid, setPrincipalUid] = useState(filters.principalUid ?? "");
 
   const operators = groupName ? options.operators.filter((operator) => operator.groupName === groupName) : options.operators;
+  const weekMaxDate = subtractDays(dateBounds?.maxDate, 6);
+  const monthMin = dateBounds?.minDate ? formatMonthValue(dateBounds.minDate) : undefined;
+  const monthMax = dateBounds?.maxDate ? formatMonthValue(dateBounds.maxDate) : undefined;
   const comparisonRange = useMemo(
     () =>
       showComparisonMode || showComparisonRange
@@ -167,6 +185,8 @@ export function GlobalFilters({
               className="h-10 w-full border border-line px-3 text-sm text-ink"
               name="startDate"
               type="date"
+              min={dateBounds?.minDate}
+              max={dateBounds?.maxDate}
               value={startDate}
               onChange={(event) => updateDayDate(event.target.value)}
             />
@@ -183,6 +203,8 @@ export function GlobalFilters({
               className="h-10 w-full border border-line px-3 text-sm text-ink"
               name="startDate"
               type="date"
+              min={dateBounds?.minDate}
+              max={weekMaxDate}
               value={startDate}
               onChange={(event) => updateWeekStartDate(event.target.value)}
             />
@@ -193,6 +215,8 @@ export function GlobalFilters({
               className="h-10 w-full border border-line bg-slate-50 px-3 text-sm text-muted"
               name="endDate"
               type="date"
+              min={dateBounds?.minDate}
+              max={dateBounds?.maxDate}
               value={endDate}
               readOnly
             />
@@ -206,6 +230,8 @@ export function GlobalFilters({
             <span>月份</span>
             <input
               className="h-10 w-full border border-line px-3 text-sm text-ink"
+              min={monthMin}
+              max={monthMax}
               type="month"
               value={formatMonthValue(startDate)}
               onChange={(event) => updateMonth(event.target.value)}
@@ -224,6 +250,8 @@ export function GlobalFilters({
               className="h-10 w-full border border-line px-3 text-sm text-ink"
               name="startDate"
               type="date"
+              min={dateBounds?.minDate}
+              max={dateBounds?.maxDate}
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
             />
@@ -234,6 +262,8 @@ export function GlobalFilters({
               className="h-10 w-full border border-line px-3 text-sm text-ink"
               name="endDate"
               type="date"
+              min={dateBounds?.minDate}
+              max={dateBounds?.maxDate}
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
             />

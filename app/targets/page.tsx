@@ -40,11 +40,11 @@ function TargetRankingTable({ rows, title }: { rows: TargetRankingRow[]; title: 
                 <td className="px-4 py-3 text-right">{formatMoney(row.salesTarget)}</td>
                 <td className="px-4 py-3 text-right">{formatMoney(row.actualSales)}</td>
                 <td className="px-4 py-3 text-right">{formatPercent(row.salesCompletion)}</td>
-                <td className="px-4 py-3 text-right">{formatPercent(row.monthlySalesCompletion)}</td>
+                <td className="px-4 py-3 text-right text-[#1d4ede]">{formatPercent(row.monthlySalesCompletion)}</td>
                 <td className="px-4 py-3 text-right">{formatMoney(row.profitTarget)}</td>
                 <td className="px-4 py-3 text-right">{formatMoney(row.actualProfit)}</td>
                 <td className="px-4 py-3 text-right">{formatPercent(row.profitCompletion)}</td>
-                <td className="px-4 py-3 text-right">{formatPercent(row.monthlyProfitCompletion)}</td>
+                <td className="px-4 py-3 text-right text-[#1d4ede]">{formatPercent(row.monthlyProfitCompletion)}</td>
               </tr>
             ))}
           </tbody>
@@ -79,10 +79,10 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
     return (
       <AppShell>
         <div className="mb-4">
-          <h1 className="text-xl font-semibold text-ink">运营目标达成</h1>
+          <h1 className="text-xl font-semibold text-ink">运营完成率</h1>
           <div className="mt-1 text-sm leading-6 text-blue-700">
             <p>1. 数据源：取自【领星ERP-结算利润】模块。</p>
-            <p>2. 时间筛选规则：系统每日自动获取 T-7 天（即当天往前推算第 7 天）的结算数据。</p>
+            <p>2. 当前运营结算利润最新日期：{latestSettlementDate ?? "暂无数据"}</p>
           </div>
         </div>
         <GlobalFilters filters={filters} options={options} />
@@ -131,11 +131,11 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
                     <td className="px-4 py-3 text-right">{formatMoney(row.salesTarget)}</td>
                     <td className="px-4 py-3 text-right">{formatMoney(row.actualSales)}</td>
                     <td className="px-4 py-3 text-right">{formatPercent(row.salesCompletion)}</td>
-                    <td className="px-4 py-3 text-right">{formatPercent(row.monthlySalesCompletion)}</td>
+                    <td className="px-4 py-3 text-right text-[#1d4ede]">{formatPercent(row.monthlySalesCompletion)}</td>
                     <td className="px-4 py-3 text-right">{formatMoney(row.profitTarget)}</td>
                     <td className="px-4 py-3 text-right">{formatMoney(row.actualProfit)}</td>
                     <td className="px-4 py-3 text-right">{formatPercent(row.profitCompletion)}</td>
-                    <td className="px-4 py-3 text-right">{formatPercent(row.monthlyProfitCompletion)}</td>
+                    <td className="px-4 py-3 text-right text-[#1d4ede]">{formatPercent(row.monthlyProfitCompletion)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -149,7 +149,7 @@ export default async function TargetsPage({ searchParams }: { searchParams?: Pro
     return (
       <AppShell>
         <div className="mb-4">
-          <h1 className="text-xl font-semibold text-ink">运营目标达成</h1>
+          <h1 className="text-xl font-semibold text-ink">运营完成率</h1>
         </div>
         <ErrorState message={displayError(error)} />
       </AppShell>

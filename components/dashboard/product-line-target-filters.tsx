@@ -3,22 +3,23 @@
 import type { ProductLineFilterOptions } from "@/lib/queries/product-lines";
 import type { DashboardFilters } from "@/lib/utils/date";
 import { Filter } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 
 function formatMonthValue(value: string) {
   return value.slice(0, 7);
+}
+
+function formatDate(date: Date) {
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function getMonthRange(value: string) {
   const [year, month] = value.split("-").map(Number);
   const start = new Date(year, month - 1, 1);
   const end = new Date(year, month, 0);
-  const formatDate = (date: Date) => {
-    const dateMonth = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
-
-    return `${date.getFullYear()}-${dateMonth}-${day}`;
-  };
 
   return {
     startDate: formatDate(start),
@@ -26,7 +27,17 @@ function getMonthRange(value: string) {
   };
 }
 
-export function ProductLineTargetFilters({ filters, options }: { filters: DashboardFilters; options: ProductLineFilterOptions }) {
+export function ProductLineTargetFilters({
+  filters,
+  isLoading = false,
+  onApply,
+  options,
+}: {
+  filters: DashboardFilters;
+  isLoading?: boolean;
+  onApply?: (filters: DashboardFilters) => void;
+  options: ProductLineFilterOptions;
+}) {
   const [month, setMonth] = useState(formatMonthValue(filters.startDate));
   const [range, setRange] = useState({ startDate: filters.startDate, endDate: filters.endDate });
   const [groupName, setGroupName] = useState(filters.groupName ?? "");
@@ -64,8 +75,21 @@ export function ProductLineTargetFilters({ filters, options }: { filters: Dashbo
     setProductLineName("");
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!onApply) return;
+
+    event.preventDefault();
+    onApply({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      groupName: groupName || undefined,
+      principalUid: principalUid || undefined,
+      productLineName: productLineName || undefined,
+    });
+  }
+
   return (
-    <form className="mb-5 grid gap-3 border-b border-line bg-white p-4 shadow-panel md:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+    <form className="mb-5 grid gap-3 border-b border-line bg-white p-4 shadow-panel md:grid-cols-[repeat(4,minmax(0,1fr))_auto]" onSubmit={handleSubmit}>
       <label className="space-y-1 text-xs text-muted">
         <span>目标月份</span>
         <input className="h-10 w-full border border-line px-3 text-sm text-ink" type="month" value={month} onChange={(event) => updateMonth(event.target.value)} />
@@ -115,9 +139,13 @@ export function ProductLineTargetFilters({ filters, options }: { filters: Dashbo
           ))}
         </select>
       </label>
-      <button className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-medium text-white hover:bg-slate-700" type="submit">
+      <button
+        className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-ink px-4 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isLoading}
+        type="submit"
+      >
         <Filter className="h-4 w-4" />
-        筛选
+        {isLoading ? "筛选中..." : "筛选"}
       </button>
     </form>
   );

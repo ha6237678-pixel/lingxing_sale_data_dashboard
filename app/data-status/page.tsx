@@ -12,7 +12,7 @@ export default async function DataStatusPage() {
 
     return (
       <AppShell>
-        <SectionTitle title="数据状态与采集日志" description="确认数据库所有表的最新日期、表行数和最近一次采集结果。" />
+        <SectionTitle title="数据库状态" description="确认数据库所有表的最新日期、表行数和最近一次采集结果。" />
 
         <div className="grid gap-3 md:grid-cols-4">
           <MetricCard label="最近采集状态" value={status.latestRun?.status ?? "-"} />
@@ -68,7 +68,7 @@ export default async function DataStatusPage() {
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="数据状态与采集日志" />
+        <SectionTitle title="数据库状态" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );

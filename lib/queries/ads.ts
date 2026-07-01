@@ -33,6 +33,24 @@ export type AdsRankingRow = {
   tacosCompareDelta?: number;
 };
 
+export async function getLatestAdsMetricDate() {
+  const rows = await query<{ latest_date: string | null }>("select max(stat_date)::text as latest_date from fact_operator_daily_metrics");
+
+  return rows[0]?.latest_date ?? undefined;
+}
+
+export async function getOperatorMetricDateBounds() {
+  const rows = await query<{ min_date: string | null; max_date: string | null }>(
+    "select min(stat_date)::text as min_date, max(stat_date)::text as max_date from fact_operator_daily_metrics",
+  );
+  const row = rows[0];
+
+  return {
+    minDate: row?.min_date ?? undefined,
+    maxDate: row?.max_date ?? undefined,
+  };
+}
+
 export async function getAdsSummary(filters: DashboardFilters): Promise<AdsSummary> {
   const rows = await query<Record<string, string>>(
     `select

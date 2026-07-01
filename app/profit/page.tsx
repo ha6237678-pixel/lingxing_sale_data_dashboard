@@ -8,7 +8,7 @@ import { RankingTable } from "@/components/dashboard/ranking-table";
 import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
-import { getLatestSettlementProfitDate, getProfitRankings, getProfitSummary, getProfitTrend } from "@/lib/queries/profit";
+import { getLatestSettlementProfitDate, getProfitRankings, getProfitSummary, getProfitTrend, getSettlementProfitDateBounds } from "@/lib/queries/profit";
 import { displayError } from "@/lib/services/errors";
 import { normalizeComparisonFilters, parseFilters, previousComparisonRange } from "@/lib/utils/date";
 
@@ -61,21 +61,27 @@ export default async function ProfitPage({
       endDate: comparisonRange.endDate,
     };
 
-    const [options, summary, comparisonSummary, trend, rankings] = await Promise.all([
+    const [options, summary, comparisonSummary, trend, rankings, dateBounds] = await Promise.all([
       getFilterOptions(),
       getProfitSummary(filters),
       getProfitSummary(comparisonFilters),
       getProfitTrend(filters),
       getProfitRankings(filters),
+      getSettlementProfitDateBounds(),
     ]);
 
     return (
       <AppShell>
         <SectionTitle
-          title="利润数据总览"
-          description="数据全部取自 fact_settlement_profit，默认结束日期跟随结算利润最新日期。"
+          title="运营利润分析"
+          description={
+            <div className="space-y-1">
+              <div>数据全部取自 fact_settlement_profit，默认结束日期跟随结算利润最新日期。</div>
+              <div className="font-semibold text-blue-700">当前运营结算利润最新日期：{latestSettlementDate ?? "暂无数据"}</div>
+            </div>
+          }
         />
-        <GlobalFilters filters={filters} options={options} showComparisonMode />
+        <GlobalFilters dateBounds={dateBounds} filters={filters} options={options} showComparisonMode />
         <ProfitSummaryPanel previous={comparisonSummary} summary={summary} />
         <div className="mt-5">
           <TrendChart
@@ -103,14 +109,14 @@ export default async function ProfitPage({
         </div>
         <ProfitRateDeltaBarChart current={rateData(summary)} previous={rateData(comparisonSummary)} />
         <div className="mt-5">
-          <RankingTable title="运营利润排行" rows={rankings} variant="profit" />
+          <RankingTable title="运营利润排行（按毛利从高到低排序）" rows={rankings} variant="profit" />
         </div>
       </AppShell>
     );
   } catch (error) {
     return (
       <AppShell>
-        <SectionTitle title="利润数据总览" />
+        <SectionTitle title="运营利润分析" />
         <ErrorState message={displayError(error)} />
       </AppShell>
     );
