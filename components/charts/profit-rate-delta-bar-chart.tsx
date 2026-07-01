@@ -30,7 +30,7 @@ export function ProfitRateDeltaBarChart({
         </div>
         <div className="min-w-28 border border-line bg-white px-3 py-2 shadow-sm">
           <div className="text-xs font-semibold text-ink">本期利润率变化</div>
-          <div className={`mt-1 text-2xl font-semibold leading-none ${grossRateDeltaPositive ? "text-red-600" : "text-emerald-600"}`}>
+          <div className="mt-1 text-2xl font-semibold leading-none text-ink">
             {grossRateDeltaPositive ? "+" : ""}
             {formatRatePercent(grossRateDelta)}
           </div>
