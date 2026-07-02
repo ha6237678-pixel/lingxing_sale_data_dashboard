@@ -39,18 +39,20 @@ export function RankingTable({
   rows,
   showAmountAverageDiff = false,
   variant = "sales",
+  headerClassName = "",
 }: {
   title: string;
   rows: RankingTableRow[];
   showAmountAverageDiff?: boolean;
   variant?: "sales" | "profit";
+  headerClassName?: string;
 }) {
   const isSales = variant === "sales";
   const emptyColSpan = isSales ? (showAmountAverageDiff ? 12 : 11) : 7;
 
   return (
     <section className="border border-line bg-white shadow-panel">
-      <div className="border-b border-line px-4 py-3 text-sm font-semibold text-ink">{title}</div>
+      <div className={`border-b border-line px-4 py-3 text-sm font-semibold text-ink ${headerClassName}`}>{title}</div>
       <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full table-auto text-left text-sm">
           <thead className="bg-slate-50 text-xs text-muted">

@@ -2,12 +2,13 @@ import { SelectableSalesAmountTrendChart, SelectableSalesTrendChart } from "@/co
 import { AppShell } from "@/components/dashboard/app-shell";
 import { GlobalFilters } from "@/components/dashboard/global-filters";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { OperatorProductLineDeclinePanel } from "@/components/dashboard/operator-product-line-decline-panel";
 import { RankingTable } from "@/components/dashboard/ranking-table";
 import { SectionTitle } from "@/components/dashboard/section-title";
 import { ErrorState } from "@/components/states/error-state";
 import { getFilterOptions } from "@/lib/queries/common";
 import { getLatestAdsMetricDate, getOperatorMetricDateBounds } from "@/lib/queries/ads";
-import { getSalesRankings, getSalesSummary, getSalesTrend } from "@/lib/queries/sales";
+import { getOperatorProductLineDeclines, getSalesRankings, getSalesSummary, getSalesTrend } from "@/lib/queries/sales";
 import { displayError } from "@/lib/services/errors";
 import { normalizeComparisonFilters, parseFilters } from "@/lib/utils/date";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/utils/number";
@@ -18,17 +19,29 @@ export default async function SalesPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const filters = normalizeComparisonFilters(parseFilters(params));
 
   try {
-    const [options, summary, trend, groupRankings, operatorRankings, latestMetricDate, dateBounds] = await Promise.all([
+    const [latestMetricDate, dateBounds] = await Promise.all([getLatestAdsMetricDate(), getOperatorMetricDateBounds()]);
+    const parsedFilters = parseFilters(params);
+    const hasDateParams = Boolean(params?.startDate || params?.endDate);
+    const latestDefaultDate = dateBounds.maxDate ?? latestMetricDate;
+    const filters = normalizeComparisonFilters(
+      !hasDateParams && latestDefaultDate
+        ? {
+            ...parsedFilters,
+            startDate: latestDefaultDate,
+            endDate: latestDefaultDate,
+          }
+        : parsedFilters,
+    );
+
+    const [options, summary, trend, groupRankings, operatorRankings, operatorProductLineDeclines] = await Promise.all([
       getFilterOptions(),
       getSalesSummary(filters),
       getSalesTrend(filters),
       getSalesRankings(filters, "group"),
       getSalesRankings(filters, "operator"),
-      getLatestAdsMetricDate(),
-      getOperatorMetricDateBounds(),
+      getOperatorProductLineDeclines(filters),
     ]);
     const operatorCount = operatorRankings.length;
     const operatorAverageAmount = operatorCount ? operatorRankings.reduce((sum, row) => sum + row.amount, 0) / operatorCount : 0;
@@ -73,11 +86,12 @@ export default async function SalesPage({
         <div className="mt-5 space-y-5">
           <RankingTable title="组别销售排行" rows={groupRankings} />
           <div className="grid gap-3 md:grid-cols-3">
-            <MetricCard label="人均销售额" value={formatMoney(operatorAverageAmount)} />
-            <MetricCard label="人均销量" value={formatNumber(operatorAverageVolume)} />
-            <MetricCard label="人均订单量" value={formatNumber(operatorAverageOrderItems)} />
+            <MetricCard label="人均销售额" value={formatMoney(operatorAverageAmount)} className="bg-[#e0c66e]" />
+            <MetricCard label="人均销量" value={formatNumber(operatorAverageVolume)} className="bg-[#e0c66e]" />
+            <MetricCard label="人均订单量" value={formatNumber(operatorAverageOrderItems)} className="bg-[#e0c66e]" />
           </div>
-          <RankingTable title="运营销售排行" rows={operatorRankingsWithAverageDiff} showAmountAverageDiff />
+          <RankingTable title="运营销售排行" rows={operatorRankingsWithAverageDiff} showAmountAverageDiff headerClassName="bg-[#6fa3d6]" />
+          <OperatorProductLineDeclinePanel rows={operatorProductLineDeclines} />
         </div>
       </AppShell>
     );

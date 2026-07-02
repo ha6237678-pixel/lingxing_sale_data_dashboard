@@ -236,16 +236,28 @@ export default async function AdsPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const filters = normalizeComparisonFilters(parseFilters(await searchParams));
+  const params = await searchParams;
 
   try {
-    const [options, summary, trend, rankings, latestMetricDate, dateBounds] = await Promise.all([
+    const [latestMetricDate, dateBounds] = await Promise.all([getLatestAdsMetricDate(), getOperatorMetricDateBounds()]);
+    const parsedFilters = parseFilters(params);
+    const hasDateParams = Boolean(params?.startDate || params?.endDate);
+    const latestDefaultDate = dateBounds.maxDate ?? latestMetricDate;
+    const filters = normalizeComparisonFilters(
+      !hasDateParams && latestDefaultDate
+        ? {
+            ...parsedFilters,
+            startDate: latestDefaultDate,
+            endDate: latestDefaultDate,
+          }
+        : parsedFilters,
+    );
+
+    const [options, summary, trend, rankings] = await Promise.all([
       getFilterOptions(),
       getAdsSummary(filters),
       getAdsTrend(filters),
       getAdsRankings(filters),
-      getLatestAdsMetricDate(),
-      getOperatorMetricDateBounds(),
     ]);
 
     return (
